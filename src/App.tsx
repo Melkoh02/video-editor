@@ -1,6 +1,7 @@
 import "./App.css";
 import { Toolbar } from "./components/Toolbar";
 import { PreviewCanvas } from "./components/PreviewCanvas";
+import { Timeline } from "./components/Timeline";
 
 export default function App() {
   return (
@@ -14,7 +15,7 @@ export default function App() {
           <PreviewCanvas />
         </div>
         <div className="timeline-area">
-          <p className="placeholder-text">Timeline — coming next</p>
+          <Timeline />
         </div>
       </main>
     </div>

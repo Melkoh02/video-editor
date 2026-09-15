@@ -97,12 +97,161 @@ html, body, #root {
   background: #1a1a1a;
   border-top: 1px solid #333;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
 .placeholder-text {
   color: #555;
   font-style: italic;
+}
+
+/* tl = timeline namespace */
+.tl-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tl-scroll {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* Ruler */
+.tl-ruler-row {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #141414;
+  border-bottom: 1px solid #333;
+}
+
+.tl-ruler {
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid #444;
+  padding-left: 3px;
+}
+
+.ruler-label {
+  font-size: 10px;
+  color: #888;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+/* Lane label column */
+.tl-lane-label {
+  width: 48px;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: #1e1e1e;
+  border-right: 1px solid #333;
+  flex-shrink: 0;
+}
+
+/* Track lanes */
+.tl-lanes {
+  display: flex;
+  flex-direction: column;
+}
+
+.tl-lane {
+  display: flex;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.tl-lane-clips {
+  flex: 1;
+  position: relative;
+}
+
+/* Clip blocks */
+.tl-clip {
+  position: absolute;
+  top: 4px;
+  height: calc(100% - 8px);
+  background: #2563eb;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  overflow: hidden;
+  user-select: none;
+  box-sizing: border-box;
+}
+.tl-clip:active { cursor: grabbing; }
+.tl-clip--selected { border-color: #facc15; box-shadow: 0 0 0 1px #facc15; }
+.tl-clip--audio { background: #065f46; border-color: #059669; }
+.tl-clip--audio.tl-clip--selected { border-color: #facc15; }
+
+.tl-clip-label {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* Trim handles */
+.tl-handle {
+  width: 8px;
+  height: 100%;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.25);
+  cursor: ew-resize;
+}
+.tl-handle--left { border-radius: 3px 0 0 3px; }
+.tl-handle--right { border-radius: 0 3px 3px 0; }
+.tl-handle:hover { background: rgba(255,255,255,0.5); }
+
+/* Playhead */
+.tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  pointer-events: none;
+  z-index: 20;
+  transform: translateX(-1px);
+}
+.tl-playhead::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -4px;
+  border: 5px solid transparent;
+  border-top-color: #ef4444;
+  border-bottom: none;
+}
+
+/* Empty state */
+.tl-empty {
+  padding: 24px;
+  color: #555;
+  font-style: italic;
+  text-align: center;
+  width: 100%;
 }
