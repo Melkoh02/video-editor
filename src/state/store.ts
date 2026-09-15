@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Project, Track, Clip } from "../types";
+import type { Project, Clip } from "../types";
 import { nanoid } from "../utils/nanoid";
 
 type PlayerState = "idle" | "playing" | "paused";
