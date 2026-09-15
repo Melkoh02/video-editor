@@ -80,13 +80,14 @@ src/
 - [x] **Separate / Extract Audio from Video**: One-click action via right-click context menu, Inspector, and Topbar menu to split video audio onto a dedicated synced audio track.
 - [x] **Media Bin Live Video & Image Thumbnails**: Automatic HTML canvas frame capture at 0.5s for video imports and image preview thumbnails in Media Library cards.
 - [x] **Project Persistence & Auto-Save**: Real-time Zustand store state synchronization to `localStorage` with initial state restoration and Topbar "New / Reset Project" option.
+- [x] **Ripple Delete & Gap Removal**: `Shift + Delete` shortcut and right-click context menu option to delete clips and collapse gaps on timeline tracks automatically.
 
 ### 🎯 Sequential Execution Plan
 1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
 2. [x] **Separate Audio from Video** ("Extract Audio Track" action).
 3. [x] **Media Bin Live Canvas Video Thumbnails**.
 4. [x] **Project Persistence & Auto-Save** (`localStorage` state sync).
-5. [ ] **Ripple Delete & Gap Removal**.
+5. [x] **Ripple Delete & Gap Removal**.
 6. [ ] **Interactive Volume Gain Line & Track Solo (`S`)**.
 
 ---

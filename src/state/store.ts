@@ -73,6 +73,7 @@ type AppState = {
   moveClipToTrack: (fromTrackId: string, toTrackId: string, clipId: string, newStart?: number) => void;
   splitClipAtCurrentTime: () => void;
   separateAudioFromVideo: (trackId?: string, clipId?: string) => void;
+  rippleDeleteSelectedClip: () => void;
 
   // Keyframes
   addKeyframe: (trackId: string, clipId: string, keyframe: Omit<import("../types").Keyframe, "id">) => void;
@@ -352,6 +353,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (track && clip) {
       state.removeClip(track.id, clip.id);
     }
+  },
+
+  rippleDeleteSelectedClip: () => {
+    const state = get();
+    if (!state.selectedClipId) return;
+    const res = findClipAndTrack(state.project.tracks, state.selectedClipId);
+    if (!res) return;
+
+    const { track, clip } = res;
+    const clipDuration = clip.outPoint - clip.inPoint;
+    const deletedStart = clip.timelineStart;
+
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) => {
+          if (t.id !== track.id) return t;
+          const remainingClips = t.clips.filter((c) => c.id !== clip.id);
+          const shiftedClips = remainingClips.map((c) => {
+            if (c.timelineStart > deletedStart) {
+              return {
+                ...c,
+                timelineStart: Math.max(0, c.timelineStart - clipDuration),
+              };
+            }
+            return c;
+          });
+          return { ...t, clips: shiftedClips };
+        }),
+      },
+      selectedClipId: null,
+    }));
   },
 
   duplicateSelectedClip: () => {

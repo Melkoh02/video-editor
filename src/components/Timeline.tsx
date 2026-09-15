@@ -612,6 +612,13 @@ export function Timeline() {
       },
     },
     {
+      label: "Ripple Delete Clip",
+      icon: "trash",
+      shortcut: "⇧Del",
+      danger: true,
+      action: () => useAppStore.getState().rippleDeleteSelectedClip(),
+    },
+    {
       label: "Delete Clip",
       icon: "trash",
       shortcut: "Del",

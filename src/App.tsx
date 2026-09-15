@@ -193,7 +193,11 @@ export default function App() {
       } else if (e.code === "Delete" || e.code === "Backspace") {
         if (selectedClipId) {
           e.preventDefault();
-          removeSelectedClip();
+          if (e.shiftKey) {
+            useAppStore.getState().rippleDeleteSelectedClip();
+          } else {
+            removeSelectedClip();
+          }
         }
       } else if (e.key === "?" || (e.shiftKey && e.code === "Slash")) {
         e.preventDefault();
