@@ -78,11 +78,12 @@ src/
 - [x] **Cross-Dissolve Transitions**: Cross-dissolve sine-curve blend transition curves in canvas compositor and clip Inspector.
 - [x] **Dedicated Left Dock Panels (`TextPanel` & `EffectsPanel`)**: Fully functional Text & Titles tab and Color Grading Presets tab hooked up to the Activity Bar buttons.
 - [x] **Separate / Extract Audio from Video**: One-click action via right-click context menu, Inspector, and Topbar menu to split video audio onto a dedicated synced audio track.
+- [x] **Media Bin Live Video & Image Thumbnails**: Automatic HTML canvas frame capture at 0.5s for video imports and image preview thumbnails in Media Library cards.
 
 ### 🎯 Sequential Execution Plan
 1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
 2. [x] **Separate Audio from Video** ("Extract Audio Track" action).
-3. [ ] **Media Bin Live Canvas Video Thumbnails**.
+3. [x] **Media Bin Live Canvas Video Thumbnails**.
 4. [ ] **Project Persistence & Auto-Save** (`localStorage` state sync).
 5. [ ] **Ripple Delete & Gap Removal**.
 6. [ ] **Interactive Volume Gain Line & Track Solo (`S`)**.

@@ -32,6 +32,7 @@ export function MediaBin() {
           format: file.name.split(".").pop()?.toUpperCase() || "MEDIA",
           width: entry.width,
           height: entry.height,
+          thumbnailUrl: entry.thumbnailUrl,
         });
       } catch (err) {
         console.error("Failed to load file:", file.name, err);
@@ -105,12 +106,22 @@ export function MediaBin() {
 
         {mediaBin.map((item) => (
           <div key={item.id} className="media-bin-card">
-            <div className="media-card-preview">
-              {item.type === "video" && <Icon name="video" size={20} />}
-              {item.type === "image" && <Icon name="image" size={20} />}
-              {item.type === "audio" && <Icon name="audio" size={20} />}
-              {item.type === "text" && <Icon name="text" size={20} />}
-              <span className="media-type-badge">{item.format}</span>
+            <div className="media-card-preview" style={{ position: "relative", overflow: "hidden" }}>
+              {item.thumbnailUrl ? (
+                <img
+                  src={item.thumbnailUrl}
+                  alt={item.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                />
+              ) : (
+                <>
+                  {item.type === "video" && <Icon name="video" size={20} />}
+                  {item.type === "image" && <Icon name="image" size={20} />}
+                  {item.type === "audio" && <Icon name="audio" size={20} />}
+                  {item.type === "text" && <Icon name="text" size={20} />}
+                </>
+              )}
+              <span className="media-type-badge" style={{ zIndex: 2 }}>{item.format}</span>
             </div>
             <div className="media-card-info">
               <div className="media-card-title" title={item.name}>

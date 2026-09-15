@@ -15,7 +15,29 @@ export type SourceEntry = {
   file: File;
   name: string;
   url: string;
+  thumbnailUrl?: string;
 };
+
+function captureMediaThumbnail(element: HTMLVideoElement | HTMLImageElement): string {
+  try {
+    const canvas = document.createElement("canvas");
+    const isVideo = element instanceof HTMLVideoElement;
+    const w = isVideo ? element.videoWidth || 1920 : element.naturalWidth || 1920;
+    const h = isVideo ? element.videoHeight || 1080 : element.naturalHeight || 1080;
+    const aspect = w / (h || 1);
+
+    canvas.width = 160;
+    canvas.height = Math.round(160 / aspect);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(element, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.75);
+    }
+  } catch {
+    // Canvas Security/CORS fallback
+  }
+  return "";
+}
 
 class SourceRegistry {
   private entries = new Map<string, SourceEntry>();
@@ -34,13 +56,20 @@ class SourceRegistry {
       const videoEl = document.createElement("video");
       videoEl.src = url;
       videoEl.preload = "auto";
-      videoEl.muted = false;
-      videoEl.playsInline = true;
+      videoEl.muted = true;
+      videoEl.currentTime = 0.5; // Seek into 0.5s for video frame preview
 
       await new Promise<void>((resolve, reject) => {
-        videoEl.onloadedmetadata = () => resolve();
+        videoEl.onseeked = () => resolve();
+        videoEl.onloadedmetadata = () => {
+          if (videoEl.currentTime === 0.5) resolve();
+        };
         videoEl.onerror = () => reject(new Error(`Failed to load video: ${file.name}`));
+        // Fallback safety timeout
+        setTimeout(() => resolve(), 800);
       });
+
+      const thumb = captureMediaThumbnail(videoEl);
 
       entry = {
         sourceId,
@@ -52,6 +81,7 @@ class SourceRegistry {
         file,
         name: file.name,
         url,
+        thumbnailUrl: thumb,
       };
     } else if (type === "audio") {
       const audioEl = document.createElement("audio");
@@ -84,6 +114,8 @@ class SourceRegistry {
         img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`));
       });
 
+      const thumb = captureMediaThumbnail(img);
+
       entry = {
         sourceId,
         type: "image",
@@ -94,6 +126,7 @@ class SourceRegistry {
         file,
         name: file.name,
         url,
+        thumbnailUrl: thumb,
       };
     }
 
