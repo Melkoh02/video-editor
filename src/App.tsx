@@ -5,6 +5,8 @@ import { ActivityBar } from "./components/ActivityBar";
 import { PreviewCanvas } from "./components/PreviewCanvas";
 import { Timeline } from "./components/Timeline";
 import { MediaBin } from "./components/MediaBin";
+import { TextPanel } from "./components/TextPanel";
+import { EffectsPanel } from "./components/EffectsPanel";
 import { Inspector } from "./components/Inspector";
 import { PeakMeter } from "./components/PeakMeter";
 import { ResizableLayout } from "./components/ResizableLayout";
@@ -22,6 +24,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const forceNewTrackRef = useRef<boolean>(false);
 
+  const activeLeftTab = useAppStore((s) => s.activeLeftTab);
   const selectedClipId = useAppStore((s) => s.selectedClipId);
   const selectClip = useAppStore((s) => s.selectClip);
   const removeSelectedClip = useAppStore((s) => s.removeSelectedClip);
@@ -222,7 +225,15 @@ export default function App() {
 
       <ResizableLayout
         activityBar={<ActivityBar onOpenShortcuts={() => setShowShortcuts(true)} />}
-        leftDock={<MediaBin />}
+        leftDock={
+          activeLeftTab === "media" ? (
+            <MediaBin />
+          ) : activeLeftTab === "text" ? (
+            <TextPanel />
+          ) : (
+            <EffectsPanel />
+          )
+        }
         centerDock={
           <div className="preview-area">
             <PreviewCanvas />

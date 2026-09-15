@@ -76,6 +76,15 @@ src/
 - [x] **Keyframe Motion Automation**: Interpolated position, scale, rotation, and opacity over time with Inspector controls and playback keyframe seek.
 - [x] **Real-time Audio Waveforms**: Web Audio API decoded audio peak waveform rendering on timeline clip blocks.
 - [x] **Cross-Dissolve Transitions**: Cross-dissolve sine-curve blend transition curves in canvas compositor and clip Inspector.
+- [x] **Dedicated Left Dock Panels (`TextPanel` & `EffectsPanel`)**: Fully functional Text & Titles tab and Color Grading Presets tab hooked up to the Activity Bar buttons.
+
+### 🎯 Sequential Execution Plan
+1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
+2. [ ] **Separate Audio from Video** ("Extract Audio Track" action).
+3. [ ] **Media Bin Live Canvas Video Thumbnails**.
+4. [ ] **Project Persistence & Auto-Save** (`localStorage` state sync).
+5. [ ] **Ripple Delete & Gap Removal**.
+6. [ ] **Interactive Volume Gain Line & Track Solo (`S`)**.
 
 ---
 *Updated automatically for seamless agent handoff.*
