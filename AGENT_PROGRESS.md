@@ -1,34 +1,47 @@
 # Agent Progress
 
 ## Status
-Scaffold complete — step 1 done, ready to build canvas compositor (step 2).
+Steps 1-4 complete. Canvas compositor + timeline UI working. Ready for step 5 (text overlay).
 
 ## Done
-- Vite + React + TS project created in `/video-editor`
-- Installed: zustand, mp4-muxer, webm-muxer
-- Core data model in `src/types/index.ts` (Project / Track / Clip / Transform)
-- Zustand store in `src/state/store.ts` (project CRUD + playback state)
-- Dark-theme shell layout: topbar / preview canvas / timeline placeholder
-- Git repo init'd, initial commit made
+- Vite + React + TS scaffold, zustand, mp4-muxer, webm-muxer installed
+- Core data model: `src/types/index.ts` (Project / Track / Clip / Transform)
+- Zustand store: full CRUD for project/tracks/clips + playback state
+- `SourceRegistry` — maps sourceId → HTMLVideoElement (preview decode via `<video>`, not WebCodecs)
+- `Compositor` — rAF loop, draws clips with transform math (drawImage centered + scale + rotation)
+- `PlaybackController` — rAF delta loop advancing currentTime; video elements seeked by compositor
+- `PreviewCanvas` component — mounts compositor on canvas ref
+- `Toolbar` — "+ Video" (append to track 1), "+ Track" (new track), play/pause/stop, layout buttons
+- `layout.ts` — `applySideBySideLayout()` / `applyFullscreenLayout()` helpers; called on new track add
+- `Timeline` — ruler (click-to-seek), track lanes, clip blocks (drag-move + left/right trim handles), playhead, empty state
 
 ## Next
-1. Implement canvas compositor: load a video file, decode frames, draw to canvas at 60fps with a transform (position/scale) — proves render loop
-2. Wire a file-open button to read a video file and add it to the store as a clip on a video track
-3. Confirm `VideoDecoder` decode → `drawImage(VideoFrame)` loop works end-to-end
+1. **Text overlay tool** (step 5): add a `TextClip` type (or extend Clip with `text?: {content, fontSize, color, fontFamily}`), render text on canvas in compositor, add text clip via toolbar button
+2. **Project settings panel** (step 6): resolution, fps, aspect ratio picker — modal or side panel
+3. **Audio tracks + Web Audio mixing** (step 7)
 
 ## Decisions / gotchas
-- `mp4-muxer` and `webm-muxer` show deprecation warnings (superseded by Mediabunny) — fine for now, migrate at export step if needed
-- Safari/Firefox: no WebCodecs → need `<video>` element fallback for preview decode
-- `nanoid` not installed as dep; using `src/utils/nanoid.ts` (crypto.getRandomValues)
-- Canvas sized at 1280×720 in DOM; actual project resolution is 1920×1080 — scale on draw
+- Preview decode uses `HTMLVideoElement.currentTime` seeking, NOT WebCodecs. WebCodecs reserved for export.
+- Seeking `videoEl.currentTime` only when >1/60s off avoids thrash but may show stale frame on slow seeks — acceptable for now.
+- `mp4-muxer` / `webm-muxer` deprecated in favour of Mediabunny — fine until export step.
+- `applySideBySideLayout` uses `setTimeout(..., 0)` after `addClip` to let store settle before reading updated tracks.
+- Playhead left offset = `currentTime * PX_PER_SEC + 48px` (48 = lane-label column width).
+- `PX_PER_SEC = 80` hardcoded — zoom control deferred to after core features done.
 
 ## File map
 ```
 src/
-  types/index.ts       — Project, Track, Clip, Transform types
-  state/store.ts       — Zustand store (all app state)
-  utils/nanoid.ts      — ID generator
-  App.tsx              — Shell layout (topbar, preview, timeline placeholder)
-  App.css              — Dark theme layout CSS
-  main.tsx             — Entry point
+  types/index.ts            — Project, Track, Clip, Transform
+  state/store.ts            — Zustand store
+  utils/nanoid.ts           — ID generator
+  engine/
+    sourceRegistry.ts       — sourceId → HTMLVideoElement
+    compositor.ts           — rAF canvas render loop
+    playback.ts             — PlaybackController (time advance)
+    layout.ts               — side-by-side / fullscreen layout helpers
+  components/
+    PreviewCanvas.tsx       — canvas + compositor mount
+    Toolbar.tsx             — file open, playback, layout buttons
+    Timeline.tsx            — ruler, lanes, clip blocks, trim, playhead
+  App.tsx / App.css         — shell layout + all styles
 ```
