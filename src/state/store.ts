@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, Clip } from "../types";
+import type { Project, Clip, Track, MediaBinItem } from "../types";
 import { nanoid } from "../utils/nanoid";
 
 type PlayerState = "idle" | "playing" | "paused";
@@ -7,41 +7,100 @@ type PlayerState = "idle" | "playing" | "paused";
 type AppState = {
   project: Project;
   playerState: PlayerState;
-  currentTime: number; // seconds
+  currentTime: number;
+  zoom: number; // pixels per second (pxPerSec)
   selectedClipId: string | null;
+  mediaBin: MediaBinItem[];
 
-  // Project actions
+  // Panel & UI Visibility
+  leftDockOpen: boolean;
+  rightDockOpen: boolean;
+  timelineDockOpen: boolean;
+  activeLeftTab: "media" | "text" | "effects";
+  autoSelectCanvas: boolean;
+  transformControlsCanvas: boolean;
+
+  toggleLeftDock: () => void;
+  toggleRightDock: () => void;
+  toggleTimelineDock: () => void;
+  setActiveLeftTab: (tab: "media" | "text" | "effects") => void;
+  setAutoSelectCanvas: (val: boolean) => void;
+  setTransformControlsCanvas: (val: boolean) => void;
+
+  // Project
   setResolution: (width: number, height: number) => void;
   setFps: (fps: number) => void;
+  setProjectName: (name: string) => void;
 
-  // Track actions
-  addTrack: (type: "video" | "audio") => void;
+  // Zoom
+  setZoom: (pxPerSec: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomToFit: (viewportWidth: number) => void;
+
+  // Media bin
+  addToBin: (item: Omit<MediaBinItem, "id">) => string;
+  removeFromBin: (id: string) => void;
+
+  // Tracks
+  addTrack: (type: "video" | "audio", name?: string) => string;
   removeTrack: (trackId: string) => void;
+  reorderTracks: (tracks: Track[]) => void;
+  moveTrack: (fromIndex: number, toIndex: number) => void;
+  setTrackMuted: (trackId: string, muted: boolean) => void;
+  setTrackLocked: (trackId: string, locked: boolean) => void;
 
-  // Clip actions
-  addClip: (trackId: string, clip: Omit<Clip, "id">) => void;
+  // Clips
+  addClip: (trackId: string, clip: Omit<Clip, "id">) => string;
   updateClip: (trackId: string, clipId: string, patch: Partial<Clip>) => void;
   removeClip: (trackId: string, clipId: string) => void;
+  removeSelectedClip: () => void;
+  duplicateSelectedClip: () => void;
   selectClip: (clipId: string | null) => void;
+  moveClipToTrack: (fromTrackId: string, toTrackId: string, clipId: string, newStart?: number) => void;
+  splitClipAtCurrentTime: () => void;
 
-  // Playback actions
+  // Playback
   setCurrentTime: (t: number) => void;
+  stepFrames: (frames: number) => void;
   play: () => void;
   pause: () => void;
   stop: () => void;
 };
 
+// Initial state with default video V1 & audio A1 tracks
 const defaultProject: Project = {
+  name: "Untitled Sequence",
   resolution: { width: 1920, height: 1080 },
   fps: 30,
-  tracks: [],
+  tracks: [
+    { id: "v1-default", type: "video", name: "V1", muted: false, locked: false, clips: [] },
+    { id: "a1-default", type: "audio", name: "A1", muted: false, locked: false, clips: [] },
+  ],
 };
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   project: defaultProject,
   playerState: "idle",
   currentTime: 0,
+  zoom: 80, // 80px per second by default
   selectedClipId: null,
+  mediaBin: [],
+
+  // Panel & UI Visibility
+  leftDockOpen: true,
+  rightDockOpen: true,
+  timelineDockOpen: true,
+  activeLeftTab: "media",
+  autoSelectCanvas: true,
+  transformControlsCanvas: true,
+
+  toggleLeftDock: () => set((s) => ({ leftDockOpen: !s.leftDockOpen })),
+  toggleRightDock: () => set((s) => ({ rightDockOpen: !s.rightDockOpen })),
+  toggleTimelineDock: () => set((s) => ({ timelineDockOpen: !s.timelineDockOpen })),
+  setActiveLeftTab: (tab) => set({ activeLeftTab: tab, leftDockOpen: true }),
+  setAutoSelectCanvas: (val) => set({ autoSelectCanvas: val }),
+  setTransformControlsCanvas: (val) => set({ transformControlsCanvas: val }),
 
   setResolution: (width, height) =>
     set((s) => ({ project: { ...s.project, resolution: { width, height } } })),
@@ -49,13 +108,48 @@ export const useAppStore = create<AppState>((set) => ({
   setFps: (fps) =>
     set((s) => ({ project: { ...s.project, fps } })),
 
-  addTrack: (type) =>
+  setProjectName: (name) =>
+    set((s) => ({ project: { ...s.project, name } })),
+
+  setZoom: (pxPerSec) => set({ zoom: Math.min(300, Math.max(10, pxPerSec)) }),
+  zoomIn: () => set((s) => ({ zoom: Math.min(300, Math.round(s.zoom * 1.25)) })),
+  zoomOut: () => set((s) => ({ zoom: Math.max(10, Math.round(s.zoom * 0.8)) })),
+  zoomToFit: (viewportWidth) => {
+    const tracks = get().project.tracks;
+    let maxDuration = 10;
+    for (const t of tracks) {
+      for (const c of t.clips) {
+        const end = c.timelineStart + (c.outPoint - c.inPoint);
+        if (end > maxDuration) maxDuration = end;
+      }
+    }
+    const fitZoom = Math.max(10, Math.min(300, (viewportWidth - 180) / (maxDuration + 1)));
+    set({ zoom: Math.round(fitZoom) });
+  },
+
+  addToBin: (item) => {
+    const id = nanoid();
+    set((s) => ({ mediaBin: [...s.mediaBin, { ...item, id }] }));
+    return id;
+  },
+
+  removeFromBin: (id) =>
+    set((s) => ({ mediaBin: s.mediaBin.filter((m) => m.id !== id) })),
+
+  addTrack: (type, name) => {
+    const id = nanoid();
+    const trackName = name || nextTrackName(type, get().project.tracks);
     set((s) => ({
       project: {
         ...s.project,
-        tracks: [...s.project.tracks, { id: nanoid(), type, clips: [] }],
+        tracks: [
+          ...s.project.tracks,
+          { id, type, name: trackName, muted: false, locked: false, clips: [] },
+        ],
       },
-    })),
+    }));
+    return id;
+  },
 
   removeTrack: (trackId) =>
     set((s) => ({
@@ -65,17 +159,51 @@ export const useAppStore = create<AppState>((set) => ({
       },
     })),
 
-  addClip: (trackId, clip) =>
+  reorderTracks: (tracks) =>
+    set((s) => ({
+      project: { ...s.project, tracks },
+    })),
+
+  moveTrack: (fromIndex, toIndex) =>
+    set((s) => {
+      const tracks = [...s.project.tracks];
+      if (fromIndex < 0 || fromIndex >= tracks.length || toIndex < 0 || toIndex >= tracks.length) return s;
+      const [moved] = tracks.splice(fromIndex, 1);
+      tracks.splice(toIndex, 0, moved);
+      return { project: { ...s.project, tracks } };
+    }),
+
+  setTrackMuted: (trackId, muted) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) => (t.id === trackId ? { ...t, muted } : t)),
+      },
+    })),
+
+  setTrackLocked: (trackId, locked) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) => (t.id === trackId ? { ...t, locked } : t)),
+      },
+    })),
+
+  addClip: (trackId, clip) => {
+    const id = nanoid();
     set((s) => ({
       project: {
         ...s.project,
         tracks: s.project.tracks.map((t) =>
           t.id === trackId
-            ? { ...t, clips: [...t.clips, { ...clip, id: nanoid() }] }
+            ? { ...t, clips: [...t.clips, { ...clip, id }] }
             : t
         ),
       },
-    })),
+      selectedClipId: id,
+    }));
+    return id;
+  },
 
   updateClip: (trackId, clipId, patch) =>
     set((s) => ({
@@ -85,9 +213,7 @@ export const useAppStore = create<AppState>((set) => ({
           t.id === trackId
             ? {
                 ...t,
-                clips: t.clips.map((c) =>
-                  c.id === clipId ? { ...c, ...patch } : c
-                ),
+                clips: t.clips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)),
               }
             : t
         ),
@@ -104,12 +230,158 @@ export const useAppStore = create<AppState>((set) => ({
             : t
         ),
       },
+      selectedClipId: s.selectedClipId === clipId ? null : s.selectedClipId,
     })),
+
+  removeSelectedClip: () => {
+    const state = get();
+    if (!state.selectedClipId) return;
+    const { track, clip } = findClipAndTrack(state.project.tracks, state.selectedClipId) || {};
+    if (track && clip) {
+      state.removeClip(track.id, clip.id);
+    }
+  },
+
+  duplicateSelectedClip: () => {
+    const state = get();
+    if (!state.selectedClipId) return;
+    const res = findClipAndTrack(state.project.tracks, state.selectedClipId);
+    if (!res) return;
+    const { track, clip } = res;
+
+    const duration = clip.outPoint - clip.inPoint;
+    const newStart = clip.timelineStart + duration + 0.2;
+
+    const dup: Omit<Clip, "id"> = {
+      sourceId: clip.sourceId,
+      name: clip.name ? `${clip.name} (Copy)` : undefined,
+      mediaType: clip.mediaType,
+      inPoint: clip.inPoint,
+      outPoint: clip.outPoint,
+      timelineStart: newStart,
+      transform: clip.transform ? { ...clip.transform } : undefined,
+      opacity: clip.opacity,
+      volume: clip.volume,
+    };
+
+    state.addClip(track.id, dup);
+  },
 
   selectClip: (clipId) => set({ selectedClipId: clipId }),
 
-  setCurrentTime: (t) => set({ currentTime: t }),
+  moveClipToTrack: (fromTrackId, toTrackId, clipId, newStart) => {
+    set((s) => {
+      const fromTrack = s.project.tracks.find((t) => t.id === fromTrackId);
+      const clip = fromTrack?.clips.find((c) => c.id === clipId);
+      if (!fromTrack || !clip) return s;
+
+      const updatedClip = {
+        ...clip,
+        timelineStart: newStart !== undefined ? Math.max(0, newStart) : clip.timelineStart,
+      };
+
+      return {
+        project: {
+          ...s.project,
+          tracks: s.project.tracks.map((t) => {
+            if (t.id === fromTrackId && fromTrackId === toTrackId) {
+              return {
+                ...t,
+                clips: t.clips.map((c) => (c.id === clipId ? updatedClip : c)),
+              };
+            }
+            if (t.id === fromTrackId) {
+              return { ...t, clips: t.clips.filter((c) => c.id !== clipId) };
+            }
+            if (t.id === toTrackId) {
+              return { ...t, clips: [...t.clips, updatedClip] };
+            }
+            return t;
+          }),
+        },
+      };
+    });
+  },
+
+  splitClipAtCurrentTime: () => {
+    const state = get();
+    const { currentTime, selectedClipId } = state;
+    const tracks = state.project.tracks;
+
+    let targetTrack: Track | undefined;
+    let targetClip: Clip | undefined;
+
+    if (selectedClipId) {
+      const result = findClipAndTrack(tracks, selectedClipId);
+      if (result) {
+        targetTrack = result.track;
+        targetClip = result.clip;
+      }
+    }
+
+    if (!targetClip) {
+      for (const t of tracks) {
+        for (const c of t.clips) {
+          const end = c.timelineStart + (c.outPoint - c.inPoint);
+          if (currentTime > c.timelineStart && currentTime < end) {
+            targetTrack = t;
+            targetClip = c;
+            break;
+          }
+        }
+        if (targetClip) break;
+      }
+    }
+
+    if (!targetTrack || !targetClip) return;
+
+    const clipEnd = targetClip.timelineStart + (targetClip.outPoint - targetClip.inPoint);
+    if (currentTime <= targetClip.timelineStart || currentTime >= clipEnd) return;
+
+    const offset = currentTime - targetClip.timelineStart;
+    const splitSourceTime = targetClip.inPoint + offset;
+
+    state.updateClip(targetTrack.id, targetClip.id, { outPoint: splitSourceTime });
+
+    const secondClip: Omit<Clip, "id"> = {
+      sourceId: targetClip.sourceId,
+      name: targetClip.name ? `${targetClip.name} (Split)` : undefined,
+      mediaType: targetClip.mediaType,
+      inPoint: splitSourceTime,
+      outPoint: targetClip.outPoint,
+      timelineStart: currentTime,
+      transform: targetClip.transform ? { ...targetClip.transform } : undefined,
+      opacity: targetClip.opacity,
+      volume: targetClip.volume,
+    };
+
+    state.addClip(targetTrack.id, secondClip);
+  },
+
+  setCurrentTime: (t) => set({ currentTime: Math.max(0, t) }),
+  stepFrames: (frames) => {
+    const fps = get().project.fps || 30;
+    const delta = frames / fps;
+    const nextTime = Math.max(0, get().currentTime + delta);
+    set({ currentTime: nextTime });
+  },
   play: () => set({ playerState: "playing" }),
   pause: () => set({ playerState: "paused" }),
   stop: () => set({ playerState: "idle", currentTime: 0 }),
 }));
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+export function nextTrackName(type: "video" | "audio", tracks?: Track[]): string {
+  const currentTracks = tracks || useAppStore.getState().project.tracks;
+  const count = currentTracks.filter((t) => t.type === type).length;
+  return type === "video" ? `V${count + 1}` : `A${count + 1}`;
+}
+
+export function findClipAndTrack(tracks: Track[], clipId: string): { track: Track; clip: Clip } | undefined {
+  for (const track of tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) return { track, clip };
+  }
+  return undefined;
+}

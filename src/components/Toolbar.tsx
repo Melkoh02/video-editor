@@ -4,8 +4,9 @@ import { sourceRegistry } from "../engine/sourceRegistry";
 import { playbackController } from "../engine/playback";
 import { applySideBySideLayout, applyFullscreenLayout } from "../engine/layout";
 import { nanoid } from "../utils/nanoid";
+import { Button } from "./ui/Button";
 
-export function Toolbar() {
+export function Toolbar({ onToggleShortcuts }: { onToggleShortcuts: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trackTargetRef = useRef<"existing" | "new">("existing");
   const playerState = useAppStore((s) => s.playerState);
@@ -16,22 +17,18 @@ export function Toolbar() {
     const sourceId = nanoid();
     const entry = await sourceRegistry.register(sourceId, file);
 
-    // Determine target track
     const tracks = useAppStore.getState().project.tracks;
     const videoTracks = tracks.filter((t) => t.type === "video");
 
     let trackId: string;
     if (!forceNewTrack && videoTracks.length > 0) {
-      // Append to first video track
       trackId = videoTracks[0].id;
     } else {
-      // Create a new video track
       addTrack("video");
       const updated = useAppStore.getState().project.tracks;
       trackId = updated[updated.length - 1].id;
     }
 
-    // Place clip after last clip on the target track
     const freshTracks = useAppStore.getState().project.tracks;
     const track = freshTracks.find((t) => t.id === trackId);
     let timelineStart = 0;
@@ -42,18 +39,51 @@ export function Toolbar() {
 
     addClip(trackId, {
       sourceId,
+      name: entry.name || file.name,
+      mediaType: entry.type || "video",
       inPoint: 0,
       outPoint: entry.duration,
       timelineStart,
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
+      opacity: 1,
       volume: 1,
     });
 
-    // After adding to a new track, redistribute layout
     if (forceNewTrack) {
-      // Wait a tick for store to settle
       setTimeout(() => applySideBySideLayout(), 0);
     }
+  }
+
+  function handleAddTextClip() {
+    const store = useAppStore.getState();
+    const videoTracks = store.project.tracks.filter((t) => t.type === "video");
+
+    let trackId: string;
+    if (videoTracks.length > 0) {
+      trackId = videoTracks[0].id;
+    } else {
+      trackId = store.addTrack("video");
+    }
+
+    const sourceId = nanoid();
+    store.addClip(trackId, {
+      sourceId,
+      name: "Text Overlay",
+      mediaType: "text",
+      inPoint: 0,
+      outPoint: 5,
+      timelineStart: store.currentTime,
+      transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
+      opacity: 1,
+      text: {
+        content: "Sample Title",
+        fontSize: 64,
+        fontFamily: "Inter",
+        color: "#ffffff",
+        strokeColor: "#000000",
+        strokeWidth: 4,
+      },
+    });
   }
 
   function openFile(forceNewTrack: boolean) {
@@ -69,55 +99,62 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
-      <button className="tb-btn" onClick={() => openFile(false)} title="Add video to first track">
+      <Button onClick={() => openFile(false)} title="Add video to first track">
         + Video
-      </button>
-      <button className="tb-btn" onClick={() => openFile(true)} title="Add video on a new track (side-by-side)">
+      </Button>
+      <Button onClick={() => openFile(true)} title="Add video on a new track (side-by-side)">
         + Track
-      </button>
+      </Button>
+      <Button variant="primary" onClick={handleAddTextClip} title="Add text overlay clip at playhead">
+        + Text
+      </Button>
 
       <div className="tb-separator" />
 
-      <button
-        className="tb-btn"
+      <Button
         disabled={playerState === "playing"}
         onClick={() => playbackController.play()}
-        title="Play"
+        title="Play (Space)"
       >
         ▶
-      </button>
-      <button
-        className="tb-btn"
+      </Button>
+      <Button
         disabled={playerState !== "playing"}
         onClick={() => playbackController.pause()}
-        title="Pause"
+        title="Pause (K / Space)"
       >
         ⏸
-      </button>
-      <button
-        className="tb-btn"
+      </Button>
+      <Button
         onClick={() => playbackController.stop()}
         title="Stop"
       >
         ⏹
-      </button>
+      </Button>
 
       <div className="tb-separator" />
 
-      <button
-        className="tb-btn"
+      <Button
         onClick={() => applySideBySideLayout()}
         title="Side-by-side layout"
       >
         ⬜⬜
-      </button>
-      <button
-        className="tb-btn"
+      </Button>
+      <Button
         onClick={() => applyFullscreenLayout()}
         title="Fullscreen layout"
       >
         ⬛
-      </button>
+      </Button>
+
+      <div className="tb-separator" />
+
+      <Button
+        onClick={onToggleShortcuts}
+        title="Keyboard Shortcuts Reference (?)"
+      >
+        ⌨️ Shortcuts
+      </Button>
 
       <input
         ref={fileInputRef}

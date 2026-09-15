@@ -1,18 +1,19 @@
 /**
  * PlaybackController — manages play/pause/seek and advances currentTime.
  *
- * Uses a simple timestamp-delta loop so currentTime advances in wall-clock
- * time while playing. Pause/seek just update the store directly.
+ * Synchronizes video and audio media elements with timeline time and track volume/mute states.
  */
 
 import { useAppStore } from "../state/store";
 import { sourceRegistry } from "./sourceRegistry";
+import { audioEngine } from "./audioEngine";
 
 class PlaybackController {
   private rafId: number | null = null;
   private lastTimestamp: number | null = null;
 
   play() {
+    audioEngine.resume();
     const store = useAppStore.getState();
     store.play();
     this.lastTimestamp = null;
@@ -22,18 +23,18 @@ class PlaybackController {
   pause() {
     this.stopLoop();
     useAppStore.getState().pause();
-    this.syncVideoElements();
+    this.syncMediaElements(false);
   }
 
   stop() {
     this.stopLoop();
     useAppStore.getState().stop();
-    this.syncVideoElements();
+    this.syncMediaElements(false);
   }
 
   seek(t: number) {
     useAppStore.getState().setCurrentTime(t);
-    this.syncVideoElements();
+    this.syncMediaElements(useAppStore.getState().playerState === "playing");
   }
 
   private tick() {
@@ -50,11 +51,13 @@ class PlaybackController {
         if (next >= duration) {
           store.setCurrentTime(duration);
           store.pause();
+          this.syncMediaElements(false);
           return;
         }
         store.setCurrentTime(next);
       }
       this.lastTimestamp = ts;
+      this.syncMediaElements(true);
       this.tick();
     });
   }
@@ -78,14 +81,77 @@ class PlaybackController {
     return max || 10;
   }
 
-  /** Pause all video elements so they don't play on their own. */
-  private syncVideoElements() {
+  /** Sync all video and audio elements according to play state, current time, and volume. */
+  public syncMediaElements(isPlaying: boolean) {
     const store = useAppStore.getState();
+    const currentTime = store.currentTime;
+
+    // Track active sources to pause non-active ones
+    const activeSources = new Set<HTMLMediaElement>();
+    let totalVolumePeak = 0;
+
     for (const track of store.project.tracks) {
       for (const clip of track.clips) {
         const entry = sourceRegistry.get(clip.sourceId);
-        if (entry) entry.videoEl.pause();
+        if (!entry || entry.type === "image") continue;
+
+        const mediaEl = entry.element as HTMLMediaElement;
+        const clipDuration = clip.outPoint - clip.inPoint;
+        const clipEnd = clip.timelineStart + clipDuration;
+        const isActive = currentTime >= clip.timelineStart && currentTime < clipEnd;
+
+        if (isActive) {
+          activeSources.add(mediaEl);
+          const sourceTime = clip.inPoint + (currentTime - clip.timelineStart);
+
+          // Volume & mute handling
+          const clipVol = clip.volume !== undefined ? clip.volume : 1;
+          const finalVol = track.muted ? 0 : Math.min(1, Math.max(0, clipVol));
+          mediaEl.volume = finalVol;
+          mediaEl.muted = track.muted || finalVol === 0;
+
+          if (finalVol > 0 && isPlaying) {
+            totalVolumePeak = Math.max(totalVolumePeak, finalVol);
+          }
+
+          // Seek if desynchronized by more than 0.1s
+          if (Math.abs(mediaEl.currentTime - sourceTime) > 0.1) {
+            mediaEl.currentTime = sourceTime;
+          }
+
+          // Play / Pause state
+          if (isPlaying) {
+            if (mediaEl.paused) {
+              mediaEl.play().catch(() => {});
+            }
+          } else {
+            if (!mediaEl.paused) {
+              mediaEl.pause();
+            }
+          }
+        }
       }
+    }
+
+    // Pause any media elements not currently active
+    for (const track of store.project.tracks) {
+      for (const clip of track.clips) {
+        const entry = sourceRegistry.get(clip.sourceId);
+        if (!entry || entry.type === "image") continue;
+        const mediaEl = entry.element as HTMLMediaElement;
+        if (!activeSources.has(mediaEl) && !mediaEl.paused) {
+          mediaEl.pause();
+        }
+      }
+    }
+
+    // Update peak meter approximation
+    if (isPlaying && totalVolumePeak > 0) {
+      const jitter = (Math.random() * 0.15 - 0.075);
+      const level = Math.min(1, Math.max(0.05, totalVolumePeak * (0.85 + jitter)));
+      audioEngine.setPeaks(level, Math.min(1, level * 0.95));
+    } else {
+      audioEngine.setPeaks(0, 0);
     }
   }
 }
