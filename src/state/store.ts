@@ -86,8 +86,9 @@ type AppState = {
   addMarker: (time?: number, label?: string, color?: string) => void;
   removeMarker: (id: string) => void;
 
-  // Project Load / Save
+  // Project Load / Save / Reset
   loadProject: (project: Project) => void;
+  resetProject: () => void;
 
   // Playback
   setCurrentTime: (t: number) => void;
@@ -109,13 +110,38 @@ const defaultProject: Project = {
   markers: [],
 };
 
+const STORAGE_KEY = "video_editor_project_v1";
+
+function loadSavedProject(): Project {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.tracks)) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load saved project state:", err);
+  }
+  return defaultProject;
+}
+
+function saveProjectToStorage(p: Project) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  } catch (err) {
+    console.warn("Failed to save project to localStorage:", err);
+  }
+}
+
 /** Deep-clone a Project for undo snapshots (tracks + clips are plain objects) */
 function cloneProject(p: Project): Project {
   return JSON.parse(JSON.stringify(p));
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  project: defaultProject,
+  project: loadSavedProject(),
   playerState: "idle",
   currentTime: 0,
   zoom: 80, // 80px per second by default
@@ -625,6 +651,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  resetProject: () => {
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: cloneProject(defaultProject),
+      selectedClipId: null,
+      currentTime: 0,
+    }));
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.warn("Failed to clear localStorage:", err);
+    }
+  },
+
   setCurrentTime: (t) => set({ currentTime: Math.max(0, t) }),
   stepFrames: (frames) => {
     const fps = get().project.fps || 30;
@@ -636,6 +677,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   pause: () => set({ playerState: "paused" }),
   stop: () => set({ playerState: "idle", currentTime: 0 }),
 }));
+
+// Auto-save project changes to localStorage
+useAppStore.subscribe((state) => {
+  saveProjectToStorage(state.project);
+});
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

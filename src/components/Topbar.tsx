@@ -183,6 +183,18 @@ export function Topbar({
                     <Icon name="folder" size={14} /> Open Project (.json)...
                   </button>
                   <div className="dropdown-divider" />
+                  <button
+                    className="dropdown-item danger"
+                    onClick={() => {
+                      if (confirm("Reset current project sequence? Unsaved changes will be cleared.")) {
+                        useAppStore.getState().resetProject();
+                      }
+                      setActiveMenu(null);
+                    }}
+                  >
+                    <Icon name="reset" size={14} /> New / Reset Project
+                  </button>
+                  <div className="dropdown-divider" />
                   <button className="dropdown-item" onClick={() => { onOpenExport(); setActiveMenu(null); }}>
                     <Icon name="export" size={14} /> Export Sequence...
                   </button>
