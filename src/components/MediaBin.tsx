@@ -3,6 +3,7 @@ import { useAppStore } from "../state/store";
 import { sourceRegistry } from "../engine/sourceRegistry";
 import { nanoid } from "../utils/nanoid";
 import { Button } from "./ui/Button";
+import { Icon } from "./ui/Icon";
 
 export function MediaBin() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +73,7 @@ export function MediaBin() {
       <div className="panel-header">
         <span className="panel-title">Media Library</span>
         <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
-          + Import Media
+          <Icon name="plus" size={12} style={{ marginRight: 4 }} /> Import Media
         </Button>
       </div>
 
@@ -94,7 +95,9 @@ export function MediaBin() {
             className="media-bin-dropzone"
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="dropzone-icon">📁</div>
+            <div className="dropzone-icon">
+              <Icon name="folder" size={32} />
+            </div>
             <div className="dropzone-text">Click to import Videos, Images or Audio</div>
             <div className="dropzone-sub">MP4, WebM, PNG, JPG, MP3, WAV</div>
           </div>
@@ -103,10 +106,10 @@ export function MediaBin() {
         {mediaBin.map((item) => (
           <div key={item.id} className="media-bin-card">
             <div className="media-card-preview">
-              {item.type === "video" && <span className="media-icon">🎬</span>}
-              {item.type === "image" && <span className="media-icon">🖼️</span>}
-              {item.type === "audio" && <span className="media-icon">🎵</span>}
-              {item.type === "text" && <span className="media-icon">🔤</span>}
+              {item.type === "video" && <Icon name="video" size={20} />}
+              {item.type === "image" && <Icon name="image" size={20} />}
+              {item.type === "audio" && <Icon name="audio" size={20} />}
+              {item.type === "text" && <Icon name="text" size={20} />}
               <span className="media-type-badge">{item.format}</span>
             </div>
             <div className="media-card-info">
@@ -130,7 +133,7 @@ export function MediaBin() {
                 title="Remove from media bin and revoke Object URL"
                 onClick={() => handleRemoveMedia(item.id, item.sourceId)}
               >
-                ✕
+                <Icon name="close" size={10} />
               </button>
             </div>
           </div>

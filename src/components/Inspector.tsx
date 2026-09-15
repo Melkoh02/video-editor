@@ -1,14 +1,20 @@
 import { useAppStore, findClipAndTrack } from "../state/store";
 import { playbackController } from "../engine/playback";
+import { DEFAULT_FILTERS } from "../types";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { Slider } from "./ui/Slider";
 import { Select } from "./ui/Select";
+import { Icon } from "./ui/Icon";
 
 export function Inspector() {
   const project = useAppStore((s) => s.project);
   const selectedClipId = useAppStore((s) => s.selectedClipId);
+  const currentTime = useAppStore((s) => s.currentTime);
+  const setCurrentTime = useAppStore((s) => s.setCurrentTime);
   const updateClip = useAppStore((s) => s.updateClip);
+  const addKeyframe = useAppStore((s) => s.addKeyframe);
+  const removeKeyframe = useAppStore((s) => s.removeKeyframe);
   const removeSelectedClip = useAppStore((s) => s.removeSelectedClip);
   const splitClipAtCurrentTime = useAppStore((s) => s.splitClipAtCurrentTime);
   const setResolution = useAppStore((s) => s.setResolution);
@@ -100,7 +106,7 @@ export function Inspector() {
           />
 
           <div className="inspector-tip">
-            💡 Select any clip on the canvas or timeline to inspect and transform properties.
+            <Icon name="info" size={14} style={{ marginRight: 6 }} /> Select any clip on the canvas or timeline to inspect and transform properties.
           </div>
         </div>
       </div>
@@ -112,17 +118,17 @@ export function Inspector() {
       <div className="panel-header">
         <span className="panel-title">Clip Inspector</span>
         <Button variant="danger" title="Delete selected clip" onClick={removeSelectedClip}>
-          🗑 Delete
+          <Icon name="trash" size={12} style={{ marginRight: 4 }} /> Delete
         </Button>
       </div>
 
       <div className="inspector-content">
         <div className="inspector-card">
           <div className="card-header-badge">
-            {selectedClip.mediaType === "video" && "🎬 Video Clip"}
-            {selectedClip.mediaType === "image" && "🖼️ Image Clip"}
-            {selectedClip.mediaType === "audio" && "🎵 Audio Clip"}
-            {selectedClip.mediaType === "text" && "🔤 Text Clip"}
+            {selectedClip.mediaType === "video" && <><Icon name="video" size={12} style={{ marginRight: 4 }} /> Video Clip</>}
+            {selectedClip.mediaType === "image" && <><Icon name="image" size={12} style={{ marginRight: 4 }} /> Image Clip</>}
+            {selectedClip.mediaType === "audio" && <><Icon name="audio" size={12} style={{ marginRight: 4 }} /> Audio Clip</>}
+            {selectedClip.mediaType === "text" && <><Icon name="text" size={12} style={{ marginRight: 4 }} /> Text Clip</>}
           </div>
           <div className="card-clip-name">{selectedClip.name || selectedClip.sourceId.slice(0, 8)}</div>
         </div>
@@ -235,8 +241,283 @@ export function Inspector() {
             />
 
             <Button style={{ width: "100%", marginTop: "6px" }} onClick={handleResetTransform}>
-              🔄 Reset Transform
+              <Icon name="reset" size={12} style={{ marginRight: 4 }} /> Reset Transform
             </Button>
+          </div>
+        )}
+
+        {/* Color Grading & Filters (Video, Image & Text Clips) */}
+        {selectedClip.mediaType !== "audio" && (
+          <div className="prop-section">
+            <div className="section-title">Color Grading & Filters</div>
+            <Slider
+              label={`Brightness (${(selectedClip.filters?.brightness ?? 100)}%)`}
+              min="0"
+              max="200"
+              step="1"
+              value={selectedClip.filters?.brightness ?? 100}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    brightness: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Contrast (${(selectedClip.filters?.contrast ?? 100)}%)`}
+              min="0"
+              max="200"
+              step="1"
+              value={selectedClip.filters?.contrast ?? 100}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    contrast: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Saturation (${(selectedClip.filters?.saturation ?? 100)}%)`}
+              min="0"
+              max="200"
+              step="1"
+              value={selectedClip.filters?.saturation ?? 100}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    saturation: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Blur (${(selectedClip.filters?.blur ?? 0)}px)`}
+              min="0"
+              max="20"
+              step="0.5"
+              value={selectedClip.filters?.blur ?? 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    blur: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Sepia (${(selectedClip.filters?.sepia ?? 0)}%)`}
+              min="0"
+              max="100"
+              step="1"
+              value={selectedClip.filters?.sepia ?? 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    sepia: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Hue Rotate (${(selectedClip.filters?.hueRotate ?? 0)}°)`}
+              min="0"
+              max="360"
+              step="1"
+              value={selectedClip.filters?.hueRotate ?? 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    hueRotate: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Invert (${(selectedClip.filters?.invert ?? 0)}%)`}
+              min="0"
+              max="100"
+              step="1"
+              value={selectedClip.filters?.invert ?? 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    invert: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Slider
+              label={`Grayscale (${(selectedClip.filters?.grayscale ?? 0)}%)`}
+              min="0"
+              max="100"
+              step="1"
+              value={selectedClip.filters?.grayscale ?? 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: {
+                    ...(selectedClip.filters || DEFAULT_FILTERS),
+                    grayscale: Number(e.target.value),
+                  },
+                })
+              }
+            />
+            <Button
+              style={{ width: "100%", marginTop: "6px" }}
+              onClick={() =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  filters: { ...DEFAULT_FILTERS },
+                })
+              }
+            >
+              <Icon name="palette" size={12} style={{ marginRight: 4 }} /> Reset Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Keyframe Motion Automation (Video, Image & Text Clips) */}
+        {selectedClip.mediaType !== "audio" && (
+          <div className="prop-section">
+            <div className="section-title">Keyframe Motion Animation</div>
+            <Button
+              style={{ width: "100%", marginBottom: "10px" }}
+              onClick={() => {
+                const relTime = Math.max(0, currentTime - selectedClip.timelineStart);
+                addKeyframe(selectedTrack.id, selectedClip.id, {
+                  time: Number(relTime.toFixed(2)),
+                  x: t.x,
+                  y: t.y,
+                  scaleX: t.scaleX,
+                  scaleY: t.scaleY,
+                  rotation: t.rotation,
+                  opacity,
+                });
+              }}
+            >
+              <Icon name="plus" size={12} style={{ marginRight: 4 }} /> Add Keyframe at Playhead
+            </Button>
+
+            {(!selectedClip.keyframes || selectedClip.keyframes.length === 0) ? (
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center" }}>
+                No keyframes added yet. Move playhead and click above to animate properties.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {selectedClip.keyframes.map((kf, i) => (
+                  <div
+                    key={kf.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      padding: "6px 8px",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ color: "var(--accent-color)", fontWeight: 600 }}>KF {i + 1}</span>
+                      <span style={{ color: "#aaa" }}>@{kf.time.toFixed(2)}s</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <Button
+                        style={{ padding: "2px 6px", fontSize: "10px" }}
+                        title="Seek playhead to keyframe"
+                        onClick={() => {
+                          playbackController.seek(selectedClip.timelineStart + kf.time);
+                          setCurrentTime(selectedClip.timelineStart + kf.time);
+                        }}
+                      >
+                        Seek
+                      </Button>
+                      <Button
+                        variant="danger"
+                        style={{ padding: "2px 6px", fontSize: "10px" }}
+                        title="Delete keyframe"
+                        onClick={() => removeKeyframe(selectedTrack.id, selectedClip.id, kf.id)}
+                      >
+                        <Icon name="trash" size={10} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Clip Fades & Cross-Dissolve */}
+        <div className="prop-section">
+          <div className="section-title">Transitions & Fades</div>
+          <Slider
+            label={`Fade In (${(selectedClip.fadeIn || 0).toFixed(1)}s)`}
+            min="0"
+            max="5"
+            step="0.1"
+            value={selectedClip.fadeIn || 0}
+            onChange={(e) =>
+              updateClip(selectedTrack.id, selectedClip.id, {
+                fadeIn: Number(e.target.value),
+              })
+            }
+          />
+          <Slider
+            label={`Fade Out (${(selectedClip.fadeOut || 0).toFixed(1)}s)`}
+            min="0"
+            max="5"
+            step="0.1"
+            value={selectedClip.fadeOut || 0}
+            onChange={(e) =>
+              updateClip(selectedTrack.id, selectedClip.id, {
+                fadeOut: Number(e.target.value),
+              })
+            }
+          />
+          {selectedClip.mediaType !== "audio" && (
+            <Slider
+              label={`Cross-Dissolve Blend (${(selectedClip.crossDissolve || 0).toFixed(1)}s)`}
+              min="0"
+              max="5"
+              step="0.1"
+              value={selectedClip.crossDissolve || 0}
+              onChange={(e) =>
+                updateClip(selectedTrack.id, selectedClip.id, {
+                  crossDissolve: Number(e.target.value),
+                })
+              }
+            />
+          )}
+        </div>
+
+        {/* Speed Control (Video & Audio Clips) */}
+        {selectedClip.mediaType !== "text" && selectedClip.mediaType !== "image" && (
+          <div className="prop-section">
+            <div className="section-title">Playback Speed & Ramping</div>
+            <Select
+              label="Speed Multiplier"
+              value={selectedClip.speed || 1}
+              onChange={(e) => {
+                const speed = Number(e.target.value);
+                updateClip(selectedTrack.id, selectedClip.id, { speed });
+              }}
+              options={[
+                { label: "0.25x (Super Slow)", value: 0.25 },
+                { label: "0.5x (Slow Motion)", value: 0.5 },
+                { label: "1.0x (Normal)", value: 1 },
+                { label: "1.5x (Fast)", value: 1.5 },
+                { label: "2.0x (Double Speed)", value: 2 },
+                { label: "4.0x (Hyperlapse)", value: 4 },
+              ]}
+            />
           </div>
         )}
 
@@ -266,7 +547,7 @@ export function Inspector() {
             style={{ width: "100%", marginBottom: "8px" }}
             onClick={splitClipAtCurrentTime}
           >
-            ✂️ Split Clip at Playhead (S)
+            <Icon name="scissors" size={12} style={{ marginRight: 4 }} /> Split Clip at Playhead (S)
           </Button>
         </div>
       </div>

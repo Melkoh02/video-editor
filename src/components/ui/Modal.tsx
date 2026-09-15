@@ -1,8 +1,8 @@
 import { type HTMLAttributes, useEffect } from "react";
 import { Button } from "./Button";
 
-export interface ModalProps extends HTMLAttributes<HTMLDivElement> {
-  title: string;
+export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
+  title: React.ReactNode;
   onClose: () => void;
 }
 

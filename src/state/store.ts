@@ -4,6 +4,9 @@ import { nanoid } from "../utils/nanoid";
 
 type PlayerState = "idle" | "playing" | "paused";
 
+/** Maximum undo history depth */
+const MAX_UNDO = 50;
+
 type AppState = {
   project: Project;
   playerState: PlayerState;
@@ -19,6 +22,16 @@ type AppState = {
   activeLeftTab: "media" | "text" | "effects";
   autoSelectCanvas: boolean;
   transformControlsCanvas: boolean;
+
+  // Timeline snapping
+  snappingEnabled: boolean;
+  toggleSnapping: () => void;
+
+  // Undo / Redo
+  undoStack: Project[];
+  redoStack: Project[];
+  undo: () => void;
+  redo: () => void;
 
   toggleLeftDock: () => void;
   toggleRightDock: () => void;
@@ -60,6 +73,21 @@ type AppState = {
   moveClipToTrack: (fromTrackId: string, toTrackId: string, clipId: string, newStart?: number) => void;
   splitClipAtCurrentTime: () => void;
 
+  // Keyframes
+  addKeyframe: (trackId: string, clipId: string, keyframe: Omit<import("../types").Keyframe, "id">) => void;
+  removeKeyframe: (trackId: string, clipId: string, keyframeId: string) => void;
+
+  // Canvas Viewport Zoom Scale (100 = fit/100%, 50 = 50%, 200 = 200%)
+  canvasScale: number;
+  setCanvasScale: (scale: number) => void;
+
+  // Markers
+  addMarker: (time?: number, label?: string, color?: string) => void;
+  removeMarker: (id: string) => void;
+
+  // Project Load / Save
+  loadProject: (project: Project) => void;
+
   // Playback
   setCurrentTime: (t: number) => void;
   stepFrames: (frames: number) => void;
@@ -77,7 +105,13 @@ const defaultProject: Project = {
     { id: "v1-default", type: "video", name: "V1", muted: false, locked: false, clips: [] },
     { id: "a1-default", type: "audio", name: "A1", muted: false, locked: false, clips: [] },
   ],
+  markers: [],
 };
+
+/** Deep-clone a Project for undo snapshots (tracks + clips are plain objects) */
+function cloneProject(p: Project): Project {
+  return JSON.parse(JSON.stringify(p));
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   project: defaultProject,
@@ -94,6 +128,36 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeLeftTab: "media",
   autoSelectCanvas: true,
   transformControlsCanvas: true,
+
+  // Timeline snapping
+  snappingEnabled: true,
+  toggleSnapping: () => set((s) => ({ snappingEnabled: !s.snappingEnabled })),
+
+  // Undo / Redo
+  undoStack: [],
+  redoStack: [],
+
+  undo: () =>
+    set((s) => {
+      if (s.undoStack.length === 0) return s;
+      const prev = s.undoStack[s.undoStack.length - 1];
+      return {
+        undoStack: s.undoStack.slice(0, -1),
+        redoStack: [...s.redoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+        project: prev,
+      };
+    }),
+
+  redo: () =>
+    set((s) => {
+      if (s.redoStack.length === 0) return s;
+      const next = s.redoStack[s.redoStack.length - 1];
+      return {
+        redoStack: s.redoStack.slice(0, -1),
+        undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+        project: next,
+      };
+    }),
 
   toggleLeftDock: () => set((s) => ({ leftDockOpen: !s.leftDockOpen })),
   toggleRightDock: () => set((s) => ({ rightDockOpen: !s.rightDockOpen })),
@@ -139,25 +203,35 @@ export const useAppStore = create<AppState>((set, get) => ({
   addTrack: (type, name) => {
     const id = nanoid();
     const trackName = name || nextTrackName(type, get().project.tracks);
-    set((s) => ({
-      project: {
-        ...s.project,
-        tracks: [
-          ...s.project.tracks,
-          { id, type, name: trackName, muted: false, locked: false, clips: [] },
-        ],
-      },
-    }));
+    set((s) => {
+      const undoStack = [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)];
+      return {
+        undoStack,
+        redoStack: [],
+        project: {
+          ...s.project,
+          tracks: [
+            ...s.project.tracks,
+            { id, type, name: trackName, muted: false, locked: false, clips: [] },
+          ],
+        },
+      };
+    });
     return id;
   },
 
   removeTrack: (trackId) =>
-    set((s) => ({
-      project: {
-        ...s.project,
-        tracks: s.project.tracks.filter((t) => t.id !== trackId),
-      },
-    })),
+    set((s) => {
+      const undoStack = [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)];
+      return {
+        undoStack,
+        redoStack: [],
+        project: {
+          ...s.project,
+          tracks: s.project.tracks.filter((t) => t.id !== trackId),
+        },
+      };
+    }),
 
   reorderTracks: (tracks) =>
     set((s) => ({
@@ -168,9 +242,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => {
       const tracks = [...s.project.tracks];
       if (fromIndex < 0 || fromIndex >= tracks.length || toIndex < 0 || toIndex >= tracks.length) return s;
+      const undoStack = [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)];
       const [moved] = tracks.splice(fromIndex, 1);
       tracks.splice(toIndex, 0, moved);
-      return { project: { ...s.project, tracks } };
+      return { undoStack, redoStack: [], project: { ...s.project, tracks } };
     }),
 
   setTrackMuted: (trackId, muted) =>
@@ -191,17 +266,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addClip: (trackId, clip) => {
     const id = nanoid();
-    set((s) => ({
-      project: {
-        ...s.project,
-        tracks: s.project.tracks.map((t) =>
-          t.id === trackId
-            ? { ...t, clips: [...t.clips, { ...clip, id }] }
-            : t
-        ),
-      },
-      selectedClipId: id,
-    }));
+    set((s) => {
+      const undoStack = [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)];
+      return {
+        undoStack,
+        redoStack: [],
+        project: {
+          ...s.project,
+          tracks: s.project.tracks.map((t) =>
+            t.id === trackId
+              ? { ...t, clips: [...t.clips, { ...clip, id }] }
+              : t
+          ),
+        },
+        selectedClipId: id,
+      };
+    });
     return id;
   },
 
@@ -221,17 +301,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   removeClip: (trackId, clipId) =>
-    set((s) => ({
-      project: {
-        ...s.project,
-        tracks: s.project.tracks.map((t) =>
-          t.id === trackId
-            ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) }
-            : t
-        ),
-      },
-      selectedClipId: s.selectedClipId === clipId ? null : s.selectedClipId,
-    })),
+    set((s) => {
+      const undoStack = [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)];
+      return {
+        undoStack,
+        redoStack: [],
+        project: {
+          ...s.project,
+          tracks: s.project.tracks.map((t) =>
+            t.id === trackId
+              ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) }
+              : t
+          ),
+        },
+        selectedClipId: s.selectedClipId === clipId ? null : s.selectedClipId,
+      };
+    }),
 
   removeSelectedClip: () => {
     const state = get();
@@ -262,6 +347,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       transform: clip.transform ? { ...clip.transform } : undefined,
       opacity: clip.opacity,
       volume: clip.volume,
+      filters: clip.filters ? { ...clip.filters } : undefined,
+      fadeIn: clip.fadeIn,
+      fadeOut: clip.fadeOut,
     };
 
     state.addClip(track.id, dup);
@@ -341,6 +429,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const offset = currentTime - targetClip.timelineStart;
     const splitSourceTime = targetClip.inPoint + offset;
 
+    // Push undo before split
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+    }));
+
     state.updateClip(targetTrack.id, targetClip.id, { outPoint: splitSourceTime });
 
     const secondClip: Omit<Clip, "id"> = {
@@ -353,9 +447,120 @@ export const useAppStore = create<AppState>((set, get) => ({
       transform: targetClip.transform ? { ...targetClip.transform } : undefined,
       opacity: targetClip.opacity,
       volume: targetClip.volume,
+      filters: targetClip.filters ? { ...targetClip.filters } : undefined,
+      fadeIn: targetClip.fadeIn,
+      fadeOut: targetClip.fadeOut,
     };
 
-    state.addClip(targetTrack.id, secondClip);
+    // addClip without double-undo (we already pushed above)
+    const id = nanoid();
+    set((s) => ({
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) =>
+          t.id === targetTrack!.id
+            ? { ...t, clips: [...t.clips, { ...secondClip, id }] }
+            : t
+        ),
+      },
+      selectedClipId: id,
+    }));
+  },
+
+  addKeyframe: (trackId, clipId, keyframeData) => {
+    const kfId = nanoid();
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) =>
+          t.id === trackId
+            ? {
+                ...t,
+                clips: t.clips.map((c) =>
+                  c.id === clipId
+                    ? {
+                        ...c,
+                        keyframes: [...(c.keyframes || []), { ...keyframeData, id: kfId }].sort(
+                          (a, b) => a.time - b.time
+                        ),
+                      }
+                    : c
+                ),
+              }
+            : t
+        ),
+      },
+    }));
+  },
+
+  removeKeyframe: (trackId, clipId, keyframeId) => {
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) =>
+          t.id === trackId
+            ? {
+                ...t,
+                clips: t.clips.map((c) =>
+                  c.id === clipId
+                    ? {
+                        ...c,
+                        keyframes: (c.keyframes || []).filter((k) => k.id !== keyframeId),
+                      }
+                    : c
+                ),
+              }
+            : t
+        ),
+      },
+    }));
+  },
+
+  canvasScale: 100,
+  setCanvasScale: (scale) => set({ canvasScale: scale }),
+
+  addMarker: (time, label, color) => {
+    const t = time !== undefined ? time : get().currentTime;
+    const markerId = nanoid();
+    const newMarker = {
+      id: markerId,
+      time: t,
+      label: label || `Marker ${ (get().project.markers?.length || 0) + 1}`,
+      color: color || "#f59e0b",
+    };
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        markers: [...(s.project.markers || []), newMarker],
+      },
+    }));
+  },
+
+  removeMarker: (id) => {
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        markers: (s.project.markers || []).filter((m) => m.id !== id),
+      },
+    }));
+  },
+
+  loadProject: (newProject) => {
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: newProject,
+      selectedClipId: null,
+      currentTime: 0,
+    }));
   },
 
   setCurrentTime: (t) => set({ currentTime: Math.max(0, t) }),

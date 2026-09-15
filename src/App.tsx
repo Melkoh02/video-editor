@@ -9,6 +9,7 @@ import { Inspector } from "./components/Inspector";
 import { PeakMeter } from "./components/PeakMeter";
 import { ResizableLayout } from "./components/ResizableLayout";
 import { ShortcutsModal } from "./components/ShortcutsModal";
+import { ExportModal } from "./components/ExportModal";
 import { useAppStore } from "./state/store";
 import { playbackController } from "./engine/playback";
 import { sourceRegistry } from "./engine/sourceRegistry";
@@ -17,6 +18,7 @@ import { nanoid } from "./utils/nanoid";
 
 export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const forceNewTrackRef = useRef<boolean>(false);
 
@@ -94,6 +96,20 @@ export default function App() {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
       if (isCmdOrCtrl) {
+        if (e.code === "KeyZ") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            useAppStore.getState().redo();
+          } else {
+            useAppStore.getState().undo();
+          }
+          return;
+        }
+        if (e.code === "KeyY") {
+          e.preventDefault();
+          useAppStore.getState().redo();
+          return;
+        }
         if (e.code === "KeyD") {
           e.preventDefault();
           duplicateSelectedClip();
@@ -109,6 +125,18 @@ export default function App() {
           useAppStore.getState().zoomOut();
           return;
         }
+      }
+
+      if (e.code === "KeyN" && !isCmdOrCtrl) {
+        e.preventDefault();
+        useAppStore.getState().toggleSnapping();
+        return;
+      }
+
+      if (e.code === "KeyM" && !isCmdOrCtrl) {
+        e.preventDefault();
+        useAppStore.getState().addMarker();
+        return;
       }
 
       if (e.code === "Space") {
@@ -189,6 +217,7 @@ export default function App() {
       <Topbar
         onOpenShortcuts={() => setShowShortcuts(true)}
         onOpenFileInput={handleOpenFileInput}
+        onOpenExport={() => setShowExport(true)}
       />
 
       <ResizableLayout
@@ -217,6 +246,7 @@ export default function App() {
       />
 
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showExport && <ExportModal onClose={() => setShowExport(false)} />}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useAppStore } from "../state/store";
+import { Icon } from "./ui/Icon";
 
 export function ActivityBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
   const leftDockOpen = useAppStore((s) => s.leftDockOpen);
@@ -23,52 +24,52 @@ export function ActivityBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }
       <div className="activity-group">
         <button
           className={`activity-btn ${leftDockOpen && activeLeftTab === "media" ? "activity-btn--active" : ""}`}
-          title="Media Library (📁)"
+          title="Media Library"
           onClick={() => handleTabClick("media")}
         >
-          <span className="act-icon">📁</span>
+          <Icon name="folder" size={18} />
         </button>
 
         <button
           className={`activity-btn ${leftDockOpen && activeLeftTab === "text" ? "activity-btn--active" : ""}`}
-          title="Text & Titles (🔤)"
+          title="Text & Titles"
           onClick={() => handleTabClick("text")}
         >
-          <span className="act-icon">🔤</span>
+          <Icon name="text" size={18} />
         </button>
 
         <button
           className={`activity-btn ${leftDockOpen && activeLeftTab === "effects" ? "activity-btn--active" : ""}`}
-          title="Effects & Color Filters (🎨)"
+          title="Effects & Color Filters"
           onClick={() => handleTabClick("effects")}
         >
-          <span className="act-icon">🎨</span>
+          <Icon name="palette" size={18} />
         </button>
       </div>
 
       <div className="activity-group activity-group-bottom">
         <button
           className={`activity-btn ${rightDockOpen ? "activity-btn--active" : ""}`}
-          title="Toggle Properties Inspector (⚙️)"
+          title="Toggle Properties Inspector"
           onClick={toggleRightDock}
         >
-          <span className="act-icon">⚙️</span>
+          <Icon name="inspector" size={18} />
         </button>
 
         <button
           className={`activity-btn ${timelineDockOpen ? "activity-btn--active" : ""}`}
-          title="Toggle Multi-track Timeline (🎞️)"
+          title="Toggle Multi-track Timeline"
           onClick={toggleTimelineDock}
         >
-          <span className="act-icon">🎞️</span>
+          <Icon name="timeline" size={18} />
         </button>
 
         <button
           className="activity-btn"
-          title="Keyboard Shortcuts Reference (⌨️)"
+          title="Keyboard Shortcuts Reference"
           onClick={onOpenShortcuts}
         >
-          <span className="act-icon">⌨️</span>
+          <Icon name="keyboard" size={18} />
         </button>
       </div>
     </aside>

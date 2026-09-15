@@ -1,17 +1,26 @@
 /**
- * Multi-track Timeline component with track reordering, cross-track clip dragging, and dynamic zoom scaling.
+ * Multi-track Timeline component with:
+ * - Track reordering (▲/▼)
+ * - Cross-track clip dragging
+ * - Dynamic zoom scaling
+ * - Magnet snapping to clip edges, playhead, and time 0
+ * - Fade-in / fade-out visual indicators on clips
  */
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { useAppStore } from "../state/store";
 import { playbackController } from "../engine/playback";
+import { generateWaveformPeaks, getCachedWaveform } from "../engine/audioWaveforms";
+import { sourceRegistry } from "../engine/sourceRegistry";
 import type { Clip, Track } from "../types";
 import { Button } from "./ui/Button";
+import { Icon } from "./ui/Icon";
 
 const TRACK_HEIGHT = 48; // px per track lane
 const RULER_HEIGHT = 24; // px
 const HANDLE_WIDTH = 8; // px trim handle width
 const MIN_CLIP_DURATION = 0.1; // seconds
+const SNAP_THRESHOLD_PX = 8; // pixels proximity to trigger snap
 
 function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -31,7 +40,50 @@ function totalDuration(tracks: Track[]): number {
   return max;
 }
 
+/** Collect all snap targets from the timeline (clip edges + playhead + time 0) */
+function collectSnapTargets(
+  tracks: Track[],
+  excludeClipId: string,
+  currentTime: number
+): number[] {
+  const targets = new Set<number>();
+  targets.add(0); // timeline start
+  targets.add(currentTime); // playhead
+
+  for (const track of tracks) {
+    for (const clip of track.clips) {
+      if (clip.id === excludeClipId) continue;
+      targets.add(clip.timelineStart);
+      targets.add(clip.timelineStart + (clip.outPoint - clip.inPoint));
+    }
+  }
+
+  return Array.from(targets);
+}
+
+/** Try to snap a value to any target, returning the snapped value or original */
+function snapToTargets(
+  value: number,
+  targets: number[],
+  thresholdSec: number
+): { snapped: number; snapPoint: number | null } {
+  let closest = Infinity;
+  let snapPoint: number | null = null;
+
+  for (const target of targets) {
+    const dist = Math.abs(value - target);
+    if (dist < closest && dist < thresholdSec) {
+      closest = dist;
+      snapPoint = target;
+    }
+  }
+
+  return { snapped: snapPoint !== null ? snapPoint : value, snapPoint };
+}
+
 // ── Ruler ──────────────────────────────────────────────────────────────────
+
+const EMPTY_MARKERS: import("../types").Marker[] = [];
 
 function Ruler({
   duration,
@@ -42,6 +94,10 @@ function Ruler({
   pxPerSec: number;
   onSeek: (t: number) => void;
 }) {
+  const projectMarkers = useAppStore((s) => s.project.markers);
+  const markers = projectMarkers || EMPTY_MARKERS;
+  const removeMarker = useAppStore((s) => s.removeMarker);
+
   const ticks: React.ReactNode[] = [];
   
   // Dynamic tick step based on zoom level
@@ -72,6 +128,20 @@ function Ruler({
       onClick={handleClick}
     >
       {ticks}
+      {markers.map((m) => (
+        <div
+          key={m.id}
+          className="ruler-marker-flag"
+          style={{ left: m.time * pxPerSec, backgroundColor: m.color }}
+          title={`${m.label} (${m.time.toFixed(1)}s) • Double-click to remove`}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            removeMarker(m.id);
+          }}
+        >
+          <span className="marker-flag-label">{m.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -80,18 +150,78 @@ function Ruler({
 
 type DragMode = "move" | "trim-left" | "trim-right";
 
+import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+
+function WaveformCanvas({ sourceId, width, height }: { sourceId: string; width: number; height: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [peaks, setPeaks] = useState<number[] | null>(() => getCachedWaveform(sourceId) || null);
+
+  useEffect(() => {
+    if (peaks) return;
+    const entry = sourceRegistry.get(sourceId);
+    if (entry && entry.url && (entry.type === "audio" || entry.type === "video")) {
+      generateWaveformPeaks(sourceId, entry.url).then((p) => {
+        if (p) setPeaks(p);
+      });
+    }
+  }, [sourceId, peaks]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !peaks || peaks.length === 0) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+
+    const barWidth = width / peaks.length;
+    const midY = height / 2;
+
+    for (let i = 0; i < peaks.length; i++) {
+      const p = peaks[i];
+      const h = Math.max(2, p * (height - 6));
+      ctx.fillRect(i * barWidth, midY - h / 2, Math.max(1, barWidth - 1), h);
+    }
+  }, [peaks, width, height]);
+
+  if (!peaks) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={Math.max(10, Math.round(width))}
+      height={height}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        opacity: 0.8,
+        zIndex: 1,
+      }}
+    />
+  );
+}
+
 function ClipBlock({
   clip,
   track,
   trackIndex,
   pxPerSec,
   isSelected,
+  onSnap,
+  onContextMenu,
 }: {
   clip: Clip;
   track: Track;
   trackIndex: number;
   pxPerSec: number;
   isSelected: boolean;
+  onSnap: (snapX: number | null) => void;
+  onContextMenu: (x: number, y: number, clipId: string) => void;
 }) {
   const updateClip = useAppStore((s) => s.updateClip);
   const selectClip = useAppStore((s) => s.selectClip);
@@ -100,6 +230,10 @@ function ClipBlock({
   const duration = clip.outPoint - clip.inPoint;
   const left = clip.timelineStart * pxPerSec;
   const width = Math.max(duration * pxPerSec, HANDLE_WIDTH * 2 + 4);
+
+  // Fade indicator widths (clamped to clip width)
+  const fadeInPx = Math.min((clip.fadeIn || 0) * pxPerSec, width);
+  const fadeOutPx = Math.min((clip.fadeOut || 0) * pxPerSec, width);
 
   const dragRef = useRef<{
     mode: DragMode;
@@ -136,7 +270,36 @@ function ClipBlock({
         const dx = (me.clientX - d.startX) / pxPerSec;
 
         if (d.mode === "move") {
-          const newStart = Math.max(0, d.startTimelineStart + dx);
+          let newStart = Math.max(0, d.startTimelineStart + dx);
+          const clipDur = clip.outPoint - clip.inPoint;
+
+          // Snapping logic
+          const snapping = useAppStore.getState().snappingEnabled;
+          if (snapping) {
+            const state = useAppStore.getState();
+            const targets = collectSnapTargets(
+              state.project.tracks,
+              clip.id,
+              state.currentTime
+            );
+            const thresholdSec = SNAP_THRESHOLD_PX / pxPerSec;
+
+            // Try snapping left edge
+            const leftSnap = snapToTargets(newStart, targets, thresholdSec);
+            // Try snapping right edge
+            const rightSnap = snapToTargets(newStart + clipDur, targets, thresholdSec);
+
+            if (leftSnap.snapPoint !== null) {
+              newStart = leftSnap.snapped;
+              onSnap(leftSnap.snapPoint * pxPerSec);
+            } else if (rightSnap.snapPoint !== null) {
+              newStart = rightSnap.snapped - clipDur;
+              onSnap(rightSnap.snapPoint * pxPerSec);
+            } else {
+              onSnap(null);
+            }
+          }
+
           const dy = me.clientY - d.startY;
           const trackOffset = Math.round(dy / TRACK_HEIGHT);
 
@@ -176,6 +339,7 @@ function ClipBlock({
 
       const onUp = () => {
         dragRef.current = null;
+        onSnap(null); // Clear snap line
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
@@ -183,7 +347,7 @@ function ClipBlock({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [clip, track, trackIndex, pxPerSec, selectClip, updateClip, moveClipToTrack]
+    [clip, track, trackIndex, pxPerSec, selectClip, updateClip, moveClipToTrack, onSnap]
   );
 
   let clipClass = "tl-clip";
@@ -197,18 +361,47 @@ function ClipBlock({
       className={clipClass}
       style={{ left, width }}
       onMouseDown={(e) => onMouseDown(e, "move")}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectClip(clip.id);
+        onContextMenu(e.clientX, e.clientY, clip.id);
+      }}
     >
+      {/* Audio Waveform Canvas */}
+      {(clip.mediaType === "audio" || clip.mediaType === "video") && (
+        <WaveformCanvas sourceId={clip.sourceId} width={width} height={TRACK_HEIGHT} />
+      )}
+
+      {/* Fade-in indicator */}
+      {fadeInPx > 0 && (
+        <div
+          className="tl-fade tl-fade--in"
+          style={{ width: fadeInPx }}
+          title={`Fade In: ${clip.fadeIn?.toFixed(1)}s`}
+        />
+      )}
+
       <div
         className="tl-handle tl-handle--left"
         onMouseDown={(e) => onMouseDown(e, "trim-left")}
       />
-      <span className="tl-clip-label" title={clip.name || clip.sourceId}>
+      <span className="tl-clip-label" title={clip.name || clip.sourceId} style={{ zIndex: 2 }}>
         {clip.name || clip.sourceId.slice(0, 8)}
       </span>
       <div
         className="tl-handle tl-handle--right"
         onMouseDown={(e) => onMouseDown(e, "trim-right")}
       />
+
+      {/* Fade-out indicator */}
+      {fadeOutPx > 0 && (
+        <div
+          className="tl-fade tl-fade--out"
+          style={{ width: fadeOutPx }}
+          title={`Fade Out: ${clip.fadeOut?.toFixed(1)}s`}
+        />
+      )}
     </div>
   );
 }
@@ -221,12 +414,16 @@ function TrackLane({
   totalTracks,
   pxPerSec,
   selectedClipId,
+  onSnap,
+  onContextMenu,
 }: {
   track: Track;
   trackIndex: number;
   totalTracks: number;
   pxPerSec: number;
   selectedClipId: string | null;
+  onSnap: (snapX: number | null) => void;
+  onContextMenu: (x: number, y: number, clipId: string) => void;
 }) {
   const setTrackMuted = useAppStore((s) => s.setTrackMuted);
   const setTrackLocked = useAppStore((s) => s.setTrackLocked);
@@ -243,7 +440,7 @@ function TrackLane({
             title="Move track up"
             onClick={() => moveTrack(trackIndex, trackIndex - 1)}
           >
-            ▲
+            <Icon name="chevron-up" size={8} />
           </button>
           <button
             className="reorder-btn"
@@ -251,11 +448,13 @@ function TrackLane({
             title="Move track down"
             onClick={() => moveTrack(trackIndex, trackIndex + 1)}
           >
-            ▼
+            <Icon name="chevron-down" size={8} />
           </button>
         </div>
 
-        <span className="tl-track-type">{track.type === "video" ? "🎬" : "🔊"}</span>
+        <span className="tl-track-type">
+          {track.type === "video" ? <Icon name="video" size={14} /> : <Icon name="audio" size={14} />}
+        </span>
         <span className="tl-track-name">{track.name}</span>
 
         <div className="tl-track-actions">
@@ -264,21 +463,21 @@ function TrackLane({
             title={track.muted ? "Unmute track" : "Mute track"}
             onClick={() => setTrackMuted(track.id, !track.muted)}
           >
-            M
+            {track.muted ? <Icon name="volume-mute" size={10} /> : "M"}
           </button>
           <button
             className={`track-btn ${track.locked ? "track-btn--active-lock" : ""}`}
             title={track.locked ? "Unlock track" : "Lock track"}
             onClick={() => setTrackLocked(track.id, !track.locked)}
           >
-            🔒
+            {track.locked ? <Icon name="lock" size={10} /> : <Icon name="unlock" size={10} />}
           </button>
           <button
             className="track-btn track-btn--delete"
             title="Delete track"
             onClick={() => removeTrack(track.id)}
           >
-            ✕
+            <Icon name="close" size={10} />
           </button>
         </div>
       </div>
@@ -292,6 +491,8 @@ function TrackLane({
             trackIndex={trackIndex}
             pxPerSec={pxPerSec}
             isSelected={clip.id === selectedClipId}
+            onSnap={onSnap}
+            onContextMenu={onContextMenu}
           />
         ))}
       </div>
@@ -310,25 +511,31 @@ function Playhead({ currentTime, pxPerSec }: { currentTime: number; pxPerSec: nu
   );
 }
 
-// ── Timeline ───────────────────────────────────────────────────────────────
+// ── Timeline ────────────────────────────────────────────────────────────────
 
 export function Timeline() {
   const tracks = useAppStore((s) => s.project.tracks);
-  const currentTime = useAppStore((s) => s.currentTime);
   const zoom = useAppStore((s) => s.zoom);
-  const setZoom = useAppStore((s) => s.setZoom);
   const zoomIn = useAppStore((s) => s.zoomIn);
   const zoomOut = useAppStore((s) => s.zoomOut);
   const zoomToFit = useAppStore((s) => s.zoomToFit);
-
+  const setZoom = useAppStore((s) => s.setZoom);
+  const currentTime = useAppStore((s) => s.currentTime);
   const selectedClipId = useAppStore((s) => s.selectedClipId);
   const addTrack = useAppStore((s) => s.addTrack);
   const splitClipAtCurrentTime = useAppStore((s) => s.splitClipAtCurrentTime);
   const removeSelectedClip = useAppStore((s) => s.removeSelectedClip);
   const duplicateSelectedClip = useAppStore((s) => s.duplicateSelectedClip);
+  const snappingEnabled = useAppStore((s) => s.snappingEnabled);
+  const toggleSnapping = useAppStore((s) => s.toggleSnapping);
+  const undo = useAppStore((s) => s.undo);
+  const redo = useAppStore((s) => s.redo);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const duration = totalDuration(tracks);
+
+  // Snap line state — the X pixel position of the active snap guide (null = hidden)
+  const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
   function handleSeek(t: number) {
     playbackController.seek(t);
@@ -339,11 +546,12 @@ export function Timeline() {
     (e: WheelEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const delta = e.deltaY < 0 ? 10 : -10;
-        setZoom(zoom + delta);
+        const factor = e.deltaY < 0 ? 1.15 : 0.85;
+        const currentZoom = useAppStore.getState().zoom;
+        setZoom(currentZoom * factor);
       }
     },
-    [zoom, setZoom]
+    [setZoom]
   );
 
   useEffect(() => {
@@ -359,22 +567,90 @@ export function Timeline() {
     }
   };
 
+  const handleSnap = useCallback((snapX: number | null) => {
+    setSnapLineX(snapX);
+  }, []);
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
+
+  const handleClipContextMenu = useCallback((x: number, y: number, clipId: string) => {
+    setContextMenu({ x, y, clipId });
+  }, []);
+
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: "Split Clip at Playhead",
+      icon: "scissors",
+      shortcut: "S",
+      action: splitClipAtCurrentTime,
+    },
+    {
+      label: "Duplicate Clip",
+      icon: "copy",
+      shortcut: "⌘D",
+      action: duplicateSelectedClip,
+    },
+    {
+      label: "Reset Transform",
+      icon: "reset",
+      action: () => {
+        const sel = useAppStore.getState().selectedClipId;
+        if (!sel) return;
+        const res = useAppStore.getState().project.tracks.flatMap(t => t.clips).find(c => c.id === sel);
+        const trk = useAppStore.getState().project.tracks.find(t => t.clips.some(c => c.id === sel));
+        if (res && trk) {
+          useAppStore.getState().updateClip(trk.id, res.id, {
+            transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
+          });
+        }
+      },
+    },
+    {
+      label: "Delete Clip",
+      icon: "trash",
+      shortcut: "Del",
+      danger: true,
+      action: removeSelectedClip,
+    },
+  ];
+
   return (
     <div className="tl-root">
       <div className="tl-bar">
         <div className="tl-bar-group">
           <Button onClick={() => addTrack("video")} title="Add video track">
-            + Video Track
+            <Icon name="plus" size={12} style={{ marginRight: 4 }} /> Video Track
           </Button>
           <Button onClick={() => addTrack("audio")} title="Add audio track">
-            + Audio Track
+            <Icon name="plus" size={12} style={{ marginRight: 4 }} /> Audio Track
           </Button>
+        </div>
+
+        {/* Undo / Redo */}
+        <div className="tl-bar-group">
+          <button className="tb-btn" onClick={undo} title="Undo (⌘Z)">
+            <Icon name="undo" size={14} />
+          </button>
+          <button className="tb-btn" onClick={redo} title="Redo (⌘⇧Z)">
+            <Icon name="redo" size={14} />
+          </button>
+        </div>
+
+        {/* Snap Toggle */}
+        <div className="tl-bar-group">
+          <button
+            className={`tb-btn ${snappingEnabled ? "tb-btn--active" : ""}`}
+            onClick={toggleSnapping}
+            title={`Magnet Snap ${snappingEnabled ? "ON" : "OFF"} (N)`}
+          >
+            <Icon name="magnet" size={14} />
+          </button>
         </div>
 
         {/* Zoom Controls */}
         <div className="tl-bar-group tl-zoom-controls">
           <button className="tb-btn" onClick={zoomOut} title="Zoom Out (⌘-)">
-            🔍−
+            <Icon name="zoom-out" size={14} />
           </button>
           <input
             type="range"
@@ -386,22 +662,22 @@ export function Timeline() {
             title={`Timeline Zoom: ${zoom}px/sec`}
           />
           <button className="tb-btn" onClick={zoomIn} title="Zoom In (⌘+)">
-            🔍+
+            <Icon name="zoom-in" size={14} />
           </button>
           <button className="tb-btn" onClick={handleFit} title="Fit timeline to screen (⌘0)">
-            ↔️ Fit
+            <Icon name="zoom-fit" size={14} /> Fit
           </button>
         </div>
 
         <div className="tl-bar-group">
           <Button onClick={splitClipAtCurrentTime} title="Split clip at playhead (S)">
-            ✂️ Split (S)
+            <Icon name="scissors" size={12} style={{ marginRight: 4 }} /> Split (S)
           </Button>
           <Button disabled={!selectedClipId} onClick={duplicateSelectedClip} title="Duplicate selected clip (⌘D)">
-            📋 Copy (⌘D)
+            <Icon name="copy" size={12} style={{ marginRight: 4 }} /> Copy (⌘D)
           </Button>
           <Button variant="danger" disabled={!selectedClipId} onClick={removeSelectedClip} title="Delete selected clip (Del)">
-            🗑 Delete
+            <Icon name="trash" size={12} style={{ marginRight: 4 }} /> Delete
           </Button>
         </div>
       </div>
@@ -425,6 +701,8 @@ export function Timeline() {
               totalTracks={tracks.length}
               pxPerSec={zoom}
               selectedClipId={selectedClipId}
+              onSnap={handleSnap}
+              onContextMenu={handleClipContextMenu}
             />
           ))}
           {tracks.length === 0 && (
@@ -432,10 +710,28 @@ export function Timeline() {
               No tracks in timeline. Click "+ Video Track" or "+ Audio Track" to start editing.
             </div>
           )}
+
+          {/* Snap guide line */}
+          {snapLineX !== null && (
+            <div
+              className="tl-snap-line"
+              style={{ left: snapLineX + 160 }}
+            />
+          )}
+
           {/* Playhead */}
           <Playhead currentTime={currentTime} pxPerSec={zoom} />
         </div>
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

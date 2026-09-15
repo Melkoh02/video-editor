@@ -102,10 +102,20 @@ class PlaybackController {
 
         if (isActive) {
           activeSources.add(mediaEl);
-          const sourceTime = clip.inPoint + (currentTime - clip.timelineStart);
 
-          // Volume & mute handling
-          const clipVol = clip.volume !== undefined ? clip.volume : 1;
+          // Volume & mute handling (including audio fade in / fade out)
+          const elapsed = currentTime - clip.timelineStart;
+          const remaining = clipDuration - elapsed;
+          let fadeMultiplier = 1;
+          if (clip.fadeIn && clip.fadeIn > 0 && elapsed < clip.fadeIn) {
+            fadeMultiplier *= elapsed / clip.fadeIn;
+          }
+          if (clip.fadeOut && clip.fadeOut > 0 && remaining < clip.fadeOut) {
+            fadeMultiplier *= remaining / clip.fadeOut;
+          }
+
+          const baseVol = clip.volume !== undefined ? clip.volume : 1;
+          const clipVol = baseVol * Math.max(0, Math.min(1, fadeMultiplier));
           const finalVol = track.muted ? 0 : Math.min(1, Math.max(0, clipVol));
           mediaEl.volume = finalVol;
           mediaEl.muted = track.muted || finalVol === 0;
@@ -114,7 +124,14 @@ class PlaybackController {
             totalVolumePeak = Math.max(totalVolumePeak, finalVol);
           }
 
+          // Set playback speed
+          const speed = clip.speed || 1;
+          if (mediaEl.playbackRate !== speed) {
+            mediaEl.playbackRate = speed;
+          }
+
           // Seek if desynchronized by more than 0.1s
+          const sourceTime = clip.inPoint + (currentTime - clip.timelineStart) * speed;
           if (Math.abs(mediaEl.currentTime - sourceTime) > 0.1) {
             mediaEl.currentTime = sourceTime;
           }
