@@ -2,36 +2,38 @@ import { useRef } from "react";
 import { useAppStore } from "../state/store";
 import { sourceRegistry } from "../engine/sourceRegistry";
 import { playbackController } from "../engine/playback";
+import { applySideBySideLayout, applyFullscreenLayout } from "../engine/layout";
 import { nanoid } from "../utils/nanoid";
 
 export function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const trackTargetRef = useRef<"existing" | "new">("existing");
   const playerState = useAppStore((s) => s.playerState);
   const addTrack = useAppStore((s) => s.addTrack);
   const addClip = useAppStore((s) => s.addClip);
-  const project = useAppStore((s) => s.project);
 
-  async function handleOpenVideo(file: File) {
+  async function handleOpenVideo(file: File, forceNewTrack: boolean) {
     const sourceId = nanoid();
     const entry = await sourceRegistry.register(sourceId, file);
 
-    // Find or create a video track
+    // Determine target track
+    const tracks = useAppStore.getState().project.tracks;
+    const videoTracks = tracks.filter((t) => t.type === "video");
+
     let trackId: string;
-    const existingVideoTrack = project.tracks.find((t) => t.type === "video");
-    if (existingVideoTrack) {
-      trackId = existingVideoTrack.id;
+    if (!forceNewTrack && videoTracks.length > 0) {
+      // Append to first video track
+      trackId = videoTracks[0].id;
     } else {
-      trackId = nanoid();
+      // Create a new video track
       addTrack("video");
-      // Track is added synchronously; fetch from store
-      const tracks = useAppStore.getState().project.tracks;
-      const newTrack = tracks[tracks.length - 1];
-      trackId = newTrack.id;
+      const updated = useAppStore.getState().project.tracks;
+      trackId = updated[updated.length - 1].id;
     }
 
-    // Place clip at timeline position 0 (or after last clip on track)
-    const tracks = useAppStore.getState().project.tracks;
-    const track = tracks.find((t) => t.id === trackId);
+    // Place clip after last clip on the target track
+    const freshTracks = useAppStore.getState().project.tracks;
+    const track = freshTracks.find((t) => t.id === trackId);
     let timelineStart = 0;
     if (track && track.clips.length > 0) {
       const last = track.clips[track.clips.length - 1];
@@ -46,23 +48,32 @@ export function Toolbar() {
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
       volume: 1,
     });
+
+    // After adding to a new track, redistribute layout
+    if (forceNewTrack) {
+      // Wait a tick for store to settle
+      setTimeout(() => applySideBySideLayout(), 0);
+    }
+  }
+
+  function openFile(forceNewTrack: boolean) {
+    trackTargetRef.current = forceNewTrack ? "new" : "existing";
+    fileInputRef.current?.click();
   }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) handleOpenVideo(file);
-    // Reset input so same file can be re-opened
+    if (file) handleOpenVideo(file, trackTargetRef.current === "new");
     e.target.value = "";
   }
 
   return (
     <div className="toolbar">
-      <button
-        className="tb-btn"
-        onClick={() => fileInputRef.current?.click()}
-        title="Open video file"
-      >
+      <button className="tb-btn" onClick={() => openFile(false)} title="Add video to first track">
         + Video
+      </button>
+      <button className="tb-btn" onClick={() => openFile(true)} title="Add video on a new track (side-by-side)">
+        + Track
       </button>
 
       <div className="tb-separator" />
@@ -89,6 +100,23 @@ export function Toolbar() {
         title="Stop"
       >
         ⏹
+      </button>
+
+      <div className="tb-separator" />
+
+      <button
+        className="tb-btn"
+        onClick={() => applySideBySideLayout()}
+        title="Side-by-side layout"
+      >
+        ⬜⬜
+      </button>
+      <button
+        className="tb-btn"
+        onClick={() => applyFullscreenLayout()}
+        title="Fullscreen layout"
+      >
+        ⬛
       </button>
 
       <input
