@@ -526,6 +526,7 @@ export function Timeline() {
   const splitClipAtCurrentTime = useAppStore((s) => s.splitClipAtCurrentTime);
   const removeSelectedClip = useAppStore((s) => s.removeSelectedClip);
   const duplicateSelectedClip = useAppStore((s) => s.duplicateSelectedClip);
+  const separateAudioFromVideo = useAppStore((s) => s.separateAudioFromVideo);
   const snappingEnabled = useAppStore((s) => s.snappingEnabled);
   const toggleSnapping = useAppStore((s) => s.toggleSnapping);
   const undo = useAppStore((s) => s.undo);
@@ -578,6 +579,11 @@ export function Timeline() {
   }, []);
 
   const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: "Separate / Extract Audio",
+      icon: "audio",
+      action: () => separateAudioFromVideo(),
+    },
     {
       label: "Split Clip at Playhead",
       icon: "scissors",

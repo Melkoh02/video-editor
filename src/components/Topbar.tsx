@@ -236,6 +236,9 @@ export function Topbar({
                   <button className="dropdown-item" onClick={() => { handleResetFilters(); setActiveMenu(null); }}>
                     <Icon name="palette" size={14} /> Reset Color Filters
                   </button>
+                  <button className="dropdown-item" onClick={() => { useAppStore.getState().separateAudioFromVideo(); setActiveMenu(null); }}>
+                    <Icon name="audio" size={14} /> Separate Audio Track
+                  </button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item" onClick={() => { useAppStore.getState().splitClipAtCurrentTime(); setActiveMenu(null); }}>
                     <Icon name="scissors" size={14} /> Split Clip

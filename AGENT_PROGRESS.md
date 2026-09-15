@@ -77,10 +77,11 @@ src/
 - [x] **Real-time Audio Waveforms**: Web Audio API decoded audio peak waveform rendering on timeline clip blocks.
 - [x] **Cross-Dissolve Transitions**: Cross-dissolve sine-curve blend transition curves in canvas compositor and clip Inspector.
 - [x] **Dedicated Left Dock Panels (`TextPanel` & `EffectsPanel`)**: Fully functional Text & Titles tab and Color Grading Presets tab hooked up to the Activity Bar buttons.
+- [x] **Separate / Extract Audio from Video**: One-click action via right-click context menu, Inspector, and Topbar menu to split video audio onto a dedicated synced audio track.
 
 ### 🎯 Sequential Execution Plan
 1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
-2. [ ] **Separate Audio from Video** ("Extract Audio Track" action).
+2. [x] **Separate Audio from Video** ("Extract Audio Track" action).
 3. [ ] **Media Bin Live Canvas Video Thumbnails**.
 4. [ ] **Project Persistence & Auto-Save** (`localStorage` state sync).
 5. [ ] **Ripple Delete & Gap Removal**.

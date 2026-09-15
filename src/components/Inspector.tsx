@@ -17,6 +17,7 @@ export function Inspector() {
   const removeKeyframe = useAppStore((s) => s.removeKeyframe);
   const removeSelectedClip = useAppStore((s) => s.removeSelectedClip);
   const splitClipAtCurrentTime = useAppStore((s) => s.splitClipAtCurrentTime);
+  const separateAudioFromVideo = useAppStore((s) => s.separateAudioFromVideo);
   const setResolution = useAppStore((s) => s.setResolution);
   const setFps = useAppStore((s) => s.setFps);
   const setProjectName = useAppStore((s) => s.setProjectName);
@@ -543,6 +544,14 @@ export function Inspector() {
         {/* Quick Actions */}
         <div className="prop-section">
           <div className="section-title">Actions</div>
+          {selectedClip.mediaType === "video" && (
+            <Button
+              style={{ width: "100%", marginBottom: "8px" }}
+              onClick={() => separateAudioFromVideo(selectedTrack.id, selectedClip.id)}
+            >
+              <Icon name="audio" size={12} style={{ marginRight: 4 }} /> Separate / Extract Audio
+            </Button>
+          )}
           <Button
             style={{ width: "100%", marginBottom: "8px" }}
             onClick={splitClipAtCurrentTime}

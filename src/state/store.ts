@@ -72,6 +72,7 @@ type AppState = {
   selectClip: (clipId: string | null) => void;
   moveClipToTrack: (fromTrackId: string, toTrackId: string, clipId: string, newStart?: number) => void;
   splitClipAtCurrentTime: () => void;
+  separateAudioFromVideo: (trackId?: string, clipId?: string) => void;
 
   // Keyframes
   addKeyframe: (trackId: string, clipId: string, keyframe: Omit<import("../types").Keyframe, "id">) => void;
@@ -464,6 +465,67 @@ export const useAppStore = create<AppState>((set, get) => ({
         ),
       },
       selectedClipId: id,
+    }));
+  },
+
+  separateAudioFromVideo: (trackIdParam, clipIdParam) => {
+    const state = get();
+    const clipId = clipIdParam || state.selectedClipId;
+    if (!clipId) return;
+
+    let targetTrack = trackIdParam
+      ? state.project.tracks.find((t) => t.id === trackIdParam)
+      : state.project.tracks.find((t) => t.clips.some((c) => c.id === clipId));
+    let targetClip = targetTrack?.clips.find((c) => c.id === clipId);
+
+    if (!targetTrack || !targetClip || targetClip.mediaType !== "video") return;
+
+    // Find existing audio track or create a new audio track
+    const audioTracks = state.project.tracks.filter((t) => t.type === "audio");
+    let audioTrackId: string;
+    if (audioTracks.length > 0) {
+      audioTrackId = audioTracks[0].id;
+    } else {
+      audioTrackId = state.addTrack("audio");
+    }
+
+    const audioClipId = nanoid();
+    const audioClip: Clip = {
+      id: audioClipId,
+      sourceId: targetClip.sourceId,
+      name: `${targetClip.name || "Video"} (Audio)`,
+      mediaType: "audio",
+      inPoint: targetClip.inPoint,
+      outPoint: targetClip.outPoint,
+      timelineStart: targetClip.timelineStart,
+      volume: targetClip.volume !== undefined ? targetClip.volume : 1,
+      fadeIn: targetClip.fadeIn,
+      fadeOut: targetClip.fadeOut,
+      speed: targetClip.speed,
+    };
+
+    set((s) => ({
+      undoStack: [...s.undoStack.slice(-(MAX_UNDO - 1)), cloneProject(s.project)],
+      redoStack: [],
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) => {
+          if (t.id === targetTrack!.id) {
+            return {
+              ...t,
+              clips: t.clips.map((c) => (c.id === clipId ? { ...c, volume: 0 } : c)),
+            };
+          }
+          if (t.id === audioTrackId) {
+            return {
+              ...t,
+              clips: [...t.clips, audioClip],
+            };
+          }
+          return t;
+        }),
+      },
+      selectedClipId: audioClipId,
     }));
   },
 
