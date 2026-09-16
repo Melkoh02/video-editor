@@ -528,12 +528,48 @@ function TrackLane({
 
 // ── Playhead ───────────────────────────────────────────────────────────────
 
-function Playhead({ currentTime, pxPerSec }: { currentTime: number; pxPerSec: number }) {
+function Playhead({
+  currentTime,
+  pxPerSec,
+  scrollEl,
+}: {
+  currentTime: number;
+  pxPerSec: number;
+  scrollEl: React.RefObject<HTMLDivElement | null>;
+}) {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const onMove = (me: MouseEvent) => {
+        const scroll = scrollEl.current;
+        if (!scroll) return;
+        const rect = scroll.getBoundingClientRect();
+        const x = me.clientX - rect.left + scroll.scrollLeft - 160;
+        const t = Math.max(0, x / pxPerSec);
+        playbackController.seek(t);
+      };
+
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [pxPerSec, scrollEl]
+  );
+
   return (
     <div
       className="tl-playhead"
-      style={{ left: currentTime * pxPerSec + 160 }} // 160 = track header width
-    />
+      style={{ left: currentTime * pxPerSec + 160 }}
+    >
+      {/* Draggable handle — the triangle head */}
+      <div className="tl-playhead-handle" onMouseDown={handleMouseDown} />
+    </div>
   );
 }
 
@@ -783,7 +819,7 @@ export function Timeline() {
           )}
 
           {/* Playhead */}
-          <Playhead currentTime={currentTime} pxPerSec={zoom} />
+          <Playhead currentTime={currentTime} pxPerSec={zoom} scrollEl={scrollRef} />
         </div>
       </div>
 

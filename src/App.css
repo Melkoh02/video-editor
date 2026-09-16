@@ -460,6 +460,7 @@ html, body, #root {
   overflow: hidden;
 }
 
+
 .timeline-dock {
   background: #18191c;
   display: flex;
@@ -609,7 +610,170 @@ html, body, #root {
 .card-btn:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
 .card-btn-danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
 
+/* ── Color Grading Panel ──────────────────────────────────────────── */
+.cg-target-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 10px 4px;
+  padding: 4px 8px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 4px;
+  color: #93c5fd;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cg-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 10px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.cg-row {
+  padding: 6px 0;
+  border-bottom: 1px solid #1f2024;
+}
+.cg-row:last-child { border-bottom: none; }
+
+.cg-row-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.cg-label {
+  font-size: 10px;
+  color: #9ca3af;
+  flex: 1;
+}
+.cg-label--modified { color: #e3e2e6; font-weight: 600; }
+
+.cg-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: #6b7280;
+  min-width: 36px;
+  text-align: right;
+}
+.cg-value--modified { color: #6366f1; }
+
+.cg-reset-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6366f1;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.cg-reset-dot:hover { background: #ef4444; }
+
+.cg-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #6366f1 var(--cg-pct, 50%), #2e3036 var(--cg-pct, 50%));
+  cursor: pointer;
+  outline: none;
+}
+.cg-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #6366f1;
+  cursor: ew-resize;
+}
+.cg-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #6366f1;
+  cursor: ew-resize;
+}
+
+.cg-presets-header {
+  padding: 8px 10px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  border-top: 1px solid #28292e;
+}
+
+.cg-presets-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.cg-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: #222327;
+  border: 1px solid #2e3036;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cg-preset-btn:hover {
+  background: #2e3036;
+  border-color: #6366f1;
+}
+
+.cg-preset-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  background: #1a1b1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.cg-preset-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #e3e2e6;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cg-preset-cat {
+  font-size: 9px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 /* ── Inspector ────────────────────────────────────────────────────── */
+
 .inspector-panel {
   flex: 1;
   display: flex;
@@ -620,6 +784,7 @@ html, body, #root {
 .inspector-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -1026,6 +1191,8 @@ html, body, #root {
   pointer-events: none;
   z-index: 30;
   transform: translateX(-1px);
+  /* Allow children (the handle) to receive events */
+  pointer-events: none;
 }
 .tl-playhead::before {
   content: "";
@@ -1035,6 +1202,19 @@ html, body, #root {
   border: 5px solid transparent;
   border-top-color: #ef4444;
   border-bottom: none;
+  pointer-events: none;
+}
+
+/* Wider invisible drag grab zone over the triangle head */
+.tl-playhead-handle {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 18px;
+  height: 18px;
+  cursor: ew-resize;
+  z-index: 10;
+  pointer-events: all;
 }
 
 /* Empty state */
