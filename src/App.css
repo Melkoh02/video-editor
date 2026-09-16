@@ -451,6 +451,95 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+}
+
+/* Canvas Floating Toolbar */
+.canvas-floating-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(24, 25, 28, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #28292e;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.canvas-zoom-select-wrap {
+  display: flex;
+  align-items: center;
+  background: #141518;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #28292e;
+}
+
+.canvas-zoom-select {
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+.canvas-zoom-select option {
+  background: #18191c;
+  color: #fff;
+}
+
+.canvas-tool-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #9ca3af;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.canvas-tool-btn:hover {
+  background: #232429;
+  color: #fff;
+  border-color: #38393e;
+}
+.canvas-tool-btn--active {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #818cf8 !important;
+  border-color: #6366f1 !important;
+}
+
+.canvas-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: #2d2e33;
+  margin: 0 2px;
+}
+
+.canvas-res-tag {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  color: #9ca3af;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .right-dock {
