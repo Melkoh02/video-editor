@@ -73,6 +73,8 @@ src/
 ---
 
 ## 📋 Completed Features & Roadmap Status
+- [x] **Media Drag and Drop to Timeline**: Drag clips from Media Library directly onto compatible timeline tracks.
+- [x] **Multi-File Importing**: Import multiple audio, video, and image files in a single file picker selection.
 - [x] **Keyframe Motion Automation**: Interpolated position, scale, rotation, and opacity over time with Inspector controls and playback keyframe seek.
 - [x] **Real-time Audio Waveforms**: Web Audio API decoded audio peak waveform rendering on timeline clip blocks.
 - [x] **Cross-Dissolve Transitions**: Cross-dissolve sine-curve blend transition curves in canvas compositor and clip Inspector.
@@ -84,12 +86,16 @@ src/
 - [x] **Track Soloing (`S`) & Clip Volume Gain Indicator**: **`S`** Track Solo toggle button in timeline headers (silences all non-soloed tracks) plus horizontal green volume level gain lines on timeline clip blocks.
 
 ### 🎯 Sequential Execution Plan
-1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
-2. [x] **Separate Audio from Video** ("Extract Audio Track" action).
-3. [x] **Media Bin Live Canvas Video Thumbnails**.
-4. [x] **Project Persistence & Auto-Save** (`localStorage` state sync).
-5. [x] **Ripple Delete & Gap Removal**.
-6. [x] **Interactive Volume Gain Line & Track Solo (`S`)**.
+1. [x] **Media Drag and Drop to Timeline** (MediaBin → Timeline track lanes).
+2. [x] **Multi-File Importing** (Multi-select in file dialog, auto-bin and track placement).
+3. [ ] **Timeline Playback Loop & In/Out Work Area Range** (Loop toggle in header, In/Out range markers on ruler, looping playback).
+4. [ ] **Canvas Zoom & Pan Controls** (Zoom in/out, fit, pan/view outside canvas boundary).
+5. [ ] **Dedicated Transitions Panel / Tab** (Independent panel with transition gallery and controls).
+6. [ ] **Panel Selection & Contextual Shortcuts** (Focus border on active panel, region-specific hotkeys).
+7. [ ] **Dedicated Keyframes Tab (After Effects Philosophy)** (Stopwatches, property tracks, keyframe list, easy ease).
+8. [ ] **Export Settings & File Size Fixes** (Strict bitrate/framerate enforcement and accurate size calculation).
+9. [ ] **Export Rendering Efficiency Optimization** (Static frame skipping/caching for unchanged frames).
+10. [ ] **After Effects-style Shortcuts** (P, S, R, T, B, N, I, O, F9, [ / ], etc.).
 
 ---
 *Updated automatically for seamless agent handoff.*

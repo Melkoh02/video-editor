@@ -41,42 +41,83 @@ export default function App() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const sourceId = nanoid();
-    const entry = await sourceRegistry.register(sourceId, file);
     const forceNewTrack = forceNewTrackRef.current;
+    let targetVideoTrackId: string | null = null;
+    let targetAudioTrackId: string | null = null;
 
-    const tracks = useAppStore.getState().project.tracks;
-    const videoTracks = tracks.filter((t) => t.type === "video");
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const sourceId = nanoid();
 
-    let trackId: string;
-    if (!forceNewTrack && videoTracks.length > 0) {
-      trackId = videoTracks[0].id;
-    } else {
-      trackId = addTrack("video");
+      try {
+        const entry = await sourceRegistry.register(sourceId, file);
+        const isAudio = entry.type === "audio";
+
+        // Add to media library
+        useAppStore.getState().addToBin({
+          name: entry.name,
+          type: entry.type,
+          duration: entry.duration,
+          sourceId: entry.sourceId,
+          format: file.name.split(".").pop()?.toUpperCase() || "MEDIA",
+          width: entry.width,
+          height: entry.height,
+          thumbnailUrl: entry.thumbnailUrl,
+        });
+
+        const tracks = useAppStore.getState().project.tracks;
+        let trackId: string;
+
+        if (isAudio) {
+          const audioTracks = tracks.filter((t) => t.type === "audio");
+          if (!forceNewTrack && targetAudioTrackId) {
+            trackId = targetAudioTrackId;
+          } else if (!forceNewTrack && audioTracks.length > 0) {
+            trackId = audioTracks[0].id;
+            targetAudioTrackId = trackId;
+          } else {
+            trackId = addTrack("audio");
+            if (!forceNewTrack) targetAudioTrackId = trackId;
+          }
+        } else {
+          const videoTracks = tracks.filter((t) => t.type === "video");
+          if (!forceNewTrack && targetVideoTrackId) {
+            trackId = targetVideoTrackId;
+          } else if (!forceNewTrack && videoTracks.length > 0) {
+            trackId = videoTracks[0].id;
+            targetVideoTrackId = trackId;
+          } else {
+            trackId = addTrack("video");
+            if (!forceNewTrack) targetVideoTrackId = trackId;
+          }
+        }
+
+        const freshTracks = useAppStore.getState().project.tracks;
+        const track = freshTracks.find((t) => t.id === trackId);
+        let timelineStart = 0;
+        if (track && track.clips.length > 0) {
+          const last = track.clips[track.clips.length - 1];
+          timelineStart = last.timelineStart + (last.outPoint - last.inPoint);
+        }
+
+        addClip(trackId, {
+          sourceId,
+          name: entry.name || file.name,
+          mediaType: entry.type || "video",
+          inPoint: 0,
+          outPoint: entry.duration,
+          timelineStart,
+          transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
+          opacity: 1,
+          volume: 1,
+        });
+      } catch (err) {
+        console.error("Failed to import file:", file.name, err);
+      }
     }
-
-    const freshTracks = useAppStore.getState().project.tracks;
-    const track = freshTracks.find((t) => t.id === trackId);
-    let timelineStart = 0;
-    if (track && track.clips.length > 0) {
-      const last = track.clips[track.clips.length - 1];
-      timelineStart = last.timelineStart + (last.outPoint - last.inPoint);
-    }
-
-    addClip(trackId, {
-      sourceId,
-      name: entry.name || file.name,
-      mediaType: entry.type || "video",
-      inPoint: 0,
-      outPoint: entry.duration,
-      timelineStart,
-      transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
-      opacity: 1,
-      volume: 1,
-    });
 
     if (forceNewTrack) {
       setTimeout(() => applySideBySideLayout(), 0);
@@ -257,6 +298,7 @@ export default function App() {
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="video/*,audio/*,image/*"
         style={{ display: "none" }}
         onChange={handleFileChange}
