@@ -55,10 +55,10 @@ export function CanvasGizmo({ containerWidth }: CanvasGizmoProps) {
   // Convert project space point to DOM space percentage / px for gizmo overlay
   const scaleRatio = containerWidth / projW; // ratio from project coords to DOM preview coords
 
-  const projToDom = (px: number, py: number) => ({
+  const projToDom = useCallback((px: number, py: number) => ({
     x: px * scaleRatio,
     y: py * scaleRatio,
-  });
+  }), [scaleRatio]);
 
   // Calculate clip bounds if active and transform controls enabled
   let bounds = null;

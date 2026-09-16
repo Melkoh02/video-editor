@@ -159,7 +159,11 @@ export default function App() {
         }
         if (e.code === "KeyD") {
           e.preventDefault();
-          duplicateSelectedClip();
+          if (e.shiftKey) {
+            splitClipAtCurrentTime();
+          } else {
+            duplicateSelectedClip();
+          }
           return;
         }
         if (e.code === "Equal" || e.code === "NumpadAdd") {
@@ -183,6 +187,87 @@ export default function App() {
       if (e.code === "KeyM" && !isCmdOrCtrl) {
         e.preventDefault();
         useAppStore.getState().addMarker();
+        return;
+      }
+
+      if (e.code === "KeyI" && !isCmdOrCtrl) {
+        e.preventDefault();
+        const current = useAppStore.getState().currentTime;
+        useAppStore.getState().setInPoint(current);
+        return;
+      }
+
+      if (e.code === "KeyO" && !isCmdOrCtrl) {
+        e.preventDefault();
+        const current = useAppStore.getState().currentTime;
+        useAppStore.getState().setOutPoint(current);
+        return;
+      }
+
+      if (e.code === "KeyB" && !isCmdOrCtrl) {
+        e.preventDefault();
+        const current = useAppStore.getState().currentTime;
+        useAppStore.getState().setInPoint(current);
+        return;
+      }
+
+      if (e.code === "KeyX" && e.altKey) {
+        e.preventDefault();
+        useAppStore.getState().clearWorkArea();
+        return;
+      }
+
+      if ((e.code === "KeyP" || e.code === "KeyR" || e.code === "KeyT") && !isCmdOrCtrl) {
+        e.preventDefault();
+        const store = useAppStore.getState();
+        store.setActiveLeftTab("keyframes");
+        if (!store.leftDockOpen) store.toggleLeftDock();
+        return;
+      }
+
+      if (e.code === "BracketLeft" && selectedClipId) {
+        e.preventDefault();
+        const store = useAppStore.getState();
+        const tracks = store.project.tracks;
+        for (const t of tracks) {
+          const c = t.clips.find((clip) => clip.id === selectedClipId);
+          if (c) {
+            if (e.altKey) {
+              const clipRelTime = Math.max(0, store.currentTime - c.timelineStart);
+              store.updateClip(t.id, c.id, {
+                inPoint: Math.min(c.outPoint - 0.1, c.inPoint + clipRelTime),
+                timelineStart: store.currentTime,
+              });
+            } else {
+              store.updateClip(t.id, c.id, { timelineStart: store.currentTime });
+            }
+            break;
+          }
+        }
+        return;
+      }
+
+      if (e.code === "BracketRight" && selectedClipId) {
+        e.preventDefault();
+        const store = useAppStore.getState();
+        const tracks = store.project.tracks;
+        for (const t of tracks) {
+          const c = t.clips.find((clip) => clip.id === selectedClipId);
+          if (c) {
+            if (e.altKey) {
+              const clipDur = Math.max(0.1, store.currentTime - c.timelineStart);
+              store.updateClip(t.id, c.id, {
+                outPoint: c.inPoint + clipDur,
+              });
+            } else {
+              const dur = c.outPoint - c.inPoint;
+              store.updateClip(t.id, c.id, {
+                timelineStart: Math.max(0, store.currentTime - dur),
+              });
+            }
+            break;
+          }
+        }
         return;
       }
 

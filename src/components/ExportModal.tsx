@@ -27,10 +27,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [totalFrames, setTotalFrames] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [actualFileSizeMb, setActualFileSizeMb] = useState<string | null>(null);
 
   // Metrics
   const [renderSpeed, setRenderSpeed] = useState("1.0x");
   const [timeLeftSec, setTimeLeftSec] = useState(0);
+  const [skippedStaticFrames, setSkippedStaticFrames] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cancelRef = useRef(false);
@@ -60,17 +62,20 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       getCurrentTime: () => exportTime,
     });
 
-    // Set up MediaRecorder
-    const stream = canvas.captureStream(exportFps);
-    let mimeType = format === "mp4" ? "video/mp4" : "video/webm";
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = "video/webm";
-    }
+    // Choose best supported mime type
+    const preferredMimes =
+      format === "mp4"
+        ? ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=h264", "video/webm"]
+        : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
 
+    const stream = canvas.captureStream(exportFps);
+    let mimeType = preferredMimes.find((m) => MediaRecorder.isTypeSupported(m)) || "video/webm";
+
+    const targetBitrate = Math.round(bitrateMbps * 1_000_000);
     const recordedChunks: Blob[] = [];
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: bitrateMbps * 1_000_000,
+      videoBitsPerSecond: targetBitrate,
     });
 
     mediaRecorder.ondataavailable = (e) => {
@@ -84,6 +89,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       const blob = new Blob(recordedChunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
+      setActualFileSizeMb((blob.size / (1024 * 1024)).toFixed(2));
       setStatus("completed");
       setProgress(100);
     };
@@ -95,6 +101,33 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     setTotalFrames(frameCount);
 
     const startTime = performance.now();
+    let staticFramesCount = 0;
+    let prevFrameWasStatic = false;
+    let prevActiveClipIds = "";
+
+    // Helper to test if all active clips at a timestamp are static
+    const isTimestampStatic = (time: number) => {
+      let activeIds: string[] = [];
+      for (const track of project.tracks) {
+        if (track.muted) continue;
+        for (const clip of track.clips) {
+          const clipEnd = clip.timelineStart + (clip.outPoint - clip.inPoint);
+          if (time >= clip.timelineStart && time < clipEnd) {
+            activeIds.push(clip.id);
+            if (clip.mediaType === "video") return { isStatic: false, ids: "" };
+            if (clip.keyframes && clip.keyframes.length > 0) return { isStatic: false, ids: "" };
+            const elapsed = time - clip.timelineStart;
+            const remaining = clipEnd - time;
+            if (clip.fadeIn && elapsed < clip.fadeIn) return { isStatic: false, ids: "" };
+            if (clip.fadeOut && remaining < clip.fadeOut) return { isStatic: false, ids: "" };
+            if (clip.crossDissolve && (elapsed < clip.crossDissolve || remaining < clip.crossDissolve)) {
+              return { isStatic: false, ids: "" };
+            }
+          }
+        }
+      }
+      return { isStatic: true, ids: activeIds.sort().join(",") };
+    };
 
     for (let frame = 0; frame < frameCount; frame++) {
       if (cancelRef.current) {
@@ -104,10 +137,21 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       }
 
       exportTime = frame * frameDuration;
-      compositor.render(
-        { ...project, resolution: { width: exportWidth, height: exportHeight } },
-        exportTime
-      );
+      const { isStatic, ids } = isTimestampStatic(exportTime);
+
+      // If static and same active clips as previous frame, skip re-rendering canvas
+      if (frame > 0 && isStatic && prevFrameWasStatic && ids === prevActiveClipIds) {
+        staticFramesCount++;
+        setSkippedStaticFrames(staticFramesCount);
+      } else {
+        compositor.render(
+          { ...project, resolution: { width: exportWidth, height: exportHeight } },
+          exportTime
+        );
+      }
+
+      prevFrameWasStatic = isStatic;
+      prevActiveClipIds = ids;
       setCurrentFrame(frame + 1);
 
       const pct = Math.round(((frame + 1) / frameCount) * 100);
@@ -123,7 +167,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         setTimeLeftSec(secLeft);
       }
 
-      // Yield frame step for canvas stream capture
+      // Yield frame step paced accurately to target FPS
       await new Promise((r) => setTimeout(r, Math.max(10, 1000 / exportFps)));
     }
 
@@ -471,8 +515,10 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                   <Icon name="hard-drive" size={14} />
                 </div>
                 <div className="stat-info">
-                  <span className="stat-label">Estimated Size</span>
-                  <span className="stat-val">~{estimatedSizeMb} MB</span>
+                  <span className="stat-label">{actualFileSizeMb ? "Actual Size" : "Estimated Size"}</span>
+                  <span className="stat-val">
+                    {actualFileSizeMb ? `${actualFileSizeMb} MB` : `~${estimatedSizeMb} MB`}
+                  </span>
                 </div>
               </div>
               <div className="stat-card">
@@ -480,8 +526,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                   <Icon name="movie" size={14} />
                 </div>
                 <div className="stat-info">
-                  <span className="stat-label">Total Length</span>
-                  <span className="stat-val">{totalDuration.toFixed(1)}s</span>
+                  <span className="stat-label">
+                    {skippedStaticFrames > 0 ? "Fast Cached" : "Total Length"}
+                  </span>
+                  <span className="stat-val">
+                    {skippedStaticFrames > 0 ? `${skippedStaticFrames} frames` : `${totalDuration.toFixed(1)}s`}
+                  </span>
                 </div>
               </div>
             </div>

@@ -73,6 +73,9 @@ src/
 ---
 
 ## 📋 Completed Features & Roadmap Status
+- [x] **Export Settings Adherence & File Size Estimation**: Accurate target bitrate and frame rate enforcement with real vs estimated file size reporting.
+- [x] **Export Rendering Efficiency Optimization**: High-performance static frame caching and compositor redraw skipping when composition is unchanged.
+- [x] **After Effects-style Shortcuts**: Layer split (`⌘⇧D`), In/Out work area (`I`/`O`/`B`/`N`/`⌥X`), reveal keyframe properties (`P`/`R`/`T`), Easy Ease (`F9`), layer alignment and trimming (`[`/`]`/`⌥[`/`⌥]`).
 - [x] **Dedicated Transitions Panel / Tab**: Standalone tab for transition presets (Cross-Dissolve, Fades, Dips) with manual duration adjustments.
 - [x] **Panel Selection & Focus Framework**: Real-time focus tracking and visual accent outline on active timeline, preview, docks, or inspector.
 - [x] **Dedicated Keyframes Tab (After Effects Philosophy)**: Property stopwatches (P, S, R, T), previous/next keyframe navigation, and Easy Ease (F9).
@@ -98,9 +101,9 @@ src/
 5. [x] **Dedicated Transitions Panel / Tab** (Independent panel with transition gallery and controls).
 6. [x] **Panel Selection & Contextual Shortcuts** (Focus border on active panel, region-specific hotkeys).
 7. [x] **Dedicated Keyframes Tab (After Effects Philosophy)** (Stopwatches, property tracks, keyframe list, easy ease).
-8. [ ] **Export Settings & File Size Fixes** (Strict bitrate/framerate enforcement and accurate size calculation).
-9. [ ] **Export Rendering Efficiency Optimization** (Static frame skipping/caching for unchanged frames).
-10. [ ] **After Effects-style Shortcuts** (P, S, R, T, B, N, I, O, F9, [ / ], etc.).
+8. [x] **Export Settings & File Size Fixes** (Strict bitrate/framerate enforcement and accurate size calculation).
+9. [x] **Export Rendering Efficiency Optimization** (Static frame skipping/caching for unchanged frames).
+10. [x] **After Effects-style Shortcuts** (P, S, R, T, B, N, I, O, F9, [ / ], etc.).
 
 ---
 *Updated automatically for seamless agent handoff.*
