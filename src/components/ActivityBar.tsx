@@ -16,11 +16,12 @@ export function ActivityBar() {
   const toggleTimelineDock = useAppStore((s) => s.toggleTimelineDock);
   const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
 
-  const handleTabClick = (tab: "media" | "text" | "effects") => {
+  const handleTabClick = (tab: "media" | "text" | "effects" | "transitions" | "keyframes") => {
     if (leftDockOpen && activeLeftTab === tab) {
       toggleLeftDock();
     } else {
       setActiveLeftTab(tab);
+      if (!leftDockOpen) toggleLeftDock();
     }
   };
 
@@ -50,6 +51,22 @@ export function ActivityBar() {
           onClick={() => handleTabClick("effects")}
         >
           <Icon name="palette" size={18} />
+        </button>
+
+        <button
+          className={`activity-btn ${leftDockOpen && activeLeftTab === "transitions" ? "activity-btn--active" : ""}`}
+          title="Transitions & Dissolves"
+          onClick={() => handleTabClick("transitions")}
+        >
+          <Icon name="transition" size={18} />
+        </button>
+
+        <button
+          className={`activity-btn ${leftDockOpen && activeLeftTab === "keyframes" ? "activity-btn--active" : ""}`}
+          title="Motion Keyframes (After Effects)"
+          onClick={() => handleTabClick("keyframes")}
+        >
+          <Icon name="keyframe" size={18} />
         </button>
       </div>
 

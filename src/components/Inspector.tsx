@@ -21,6 +21,11 @@ export function Inspector() {
   const setResolution = useAppStore((s) => s.setResolution);
   const setFps = useAppStore((s) => s.setFps);
   const setProjectName = useAppStore((s) => s.setProjectName);
+  const activePanel = useAppStore((s) => s.activePanel);
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
+  const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
+  const leftDockOpen = useAppStore((s) => s.leftDockOpen);
+  const toggleLeftDock = useAppStore((s) => s.toggleLeftDock);
 
   let selectedClip = null;
   let selectedTrack = null;
@@ -67,7 +72,10 @@ export function Inspector() {
 
   if (!selectedClip || !selectedTrack) {
     return (
-      <div className="inspector-panel">
+      <div
+        className={`inspector-panel ${activePanel === "inspector" ? "panel--active" : ""}`}
+        onMouseDown={() => setActivePanel("inspector")}
+      >
         <div className="panel-header">
           <span className="panel-title">Sequence Settings</span>
         </div>
@@ -115,7 +123,10 @@ export function Inspector() {
   }
 
   return (
-    <div className="inspector-panel">
+    <div
+      className={`inspector-panel ${activePanel === "inspector" ? "panel--active" : ""}`}
+      onMouseDown={() => setActivePanel("inspector")}
+    >
       <div className="panel-header">
         <span className="panel-title">Clip Inspector</span>
         <Button variant="danger" title="Delete selected clip" onClick={removeSelectedClip}>
@@ -124,6 +135,29 @@ export function Inspector() {
       </div>
 
       <div className="inspector-content">
+        {/* Dedicated Panel Quick Links */}
+        <div className="inspector-quick-nav">
+          <button
+            className="quick-nav-btn"
+            onClick={() => {
+              setActiveLeftTab("keyframes");
+              if (!leftDockOpen) toggleLeftDock();
+            }}
+          >
+            <Icon name="keyframe" size={13} style={{ color: "#f59e0b", marginRight: 4 }} />
+            Keyframes Panel →
+          </button>
+          <button
+            className="quick-nav-btn"
+            onClick={() => {
+              setActiveLeftTab("transitions");
+              if (!leftDockOpen) toggleLeftDock();
+            }}
+          >
+            <Icon name="transition" size={13} style={{ color: "#6366f1", marginRight: 4 }} />
+            Transitions Panel →
+          </button>
+        </div>
         <div className="inspector-card">
           <div className="card-header-badge">
             {selectedClip.mediaType === "video" && <><Icon name="video" size={12} style={{ marginRight: 4 }} /> Video Clip</>}
