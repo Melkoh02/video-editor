@@ -120,7 +120,7 @@ export function Topbar({
           <div className="brand-badge">
             <Icon name="movie" size={18} className="brand-logo-icon" />
             <span className="brand-name">Video Editor</span>
-            <span className="status-pill">● WASM • Ready</span>
+            <span className="status-pill">● Offline Studio</span>
           </div>
 
           <nav className="topbar-menu" ref={menuNavRef}>
@@ -439,18 +439,6 @@ export function Topbar({
           <Button size="sm" variant="primary" onClick={handleAddText} title="Add text overlay at playhead">
             <Icon name="text" size={12} style={{ marginRight: 4 }} /> Text
           </Button>
-        </div>
-
-        <div className="dock-toggles">
-          <button className="tb-btn" onClick={toggleLeftDock} title="Toggle Left Media Dock">
-            <Icon name="folder" size={12} style={{ marginRight: 4 }} /> Media
-          </button>
-          <button className="tb-btn" onClick={toggleRightDock} title="Toggle Right Inspector Dock">
-            <Icon name="inspector" size={12} style={{ marginRight: 4 }} /> Inspector
-          </button>
-          <button className="tb-btn" onClick={toggleTimelineDock} title="Toggle Timeline Dock">
-            <Icon name="timeline" size={12} style={{ marginRight: 4 }} /> Timeline
-          </button>
         </div>
       </div>
     </header>

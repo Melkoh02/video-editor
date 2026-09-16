@@ -547,6 +547,7 @@ export function Timeline() {
   const zoomToFit = useAppStore((s) => s.zoomToFit);
   const setZoom = useAppStore((s) => s.setZoom);
   const currentTime = useAppStore((s) => s.currentTime);
+  const playerState = useAppStore((s) => s.playerState);
   const selectedClipId = useAppStore((s) => s.selectedClipId);
   const addTrack = useAppStore((s) => s.addTrack);
   const splitClipAtCurrentTime = useAppStore((s) => s.splitClipAtCurrentTime);
@@ -656,6 +657,29 @@ export function Timeline() {
   return (
     <div className="tl-root">
       <div className="tl-bar">
+        {/* Transport Controls */}
+        <div className="tl-bar-group">
+          <button
+            className="tb-btn"
+            disabled={playerState === "playing"}
+            onClick={() => playbackController.play()}
+            title="Play (Space)"
+          >
+            <Icon name="play" size={12} />
+          </button>
+          <button
+            className="tb-btn"
+            disabled={playerState !== "playing"}
+            onClick={() => playbackController.pause()}
+            title="Pause (K / Space)"
+          >
+            <Icon name="pause" size={12} />
+          </button>
+          <button className="tb-btn" onClick={() => playbackController.stop()} title="Stop">
+            <Icon name="stop" size={12} />
+          </button>
+        </div>
+
         <div className="tl-bar-group">
           <Button onClick={() => addTrack("video")} title="Add video track">
             <Icon name="plus" size={12} style={{ marginRight: 4 }} /> Video Track

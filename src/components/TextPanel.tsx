@@ -122,15 +122,25 @@ export function TextPanel() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: "8px",
+                padding: "4px 6px",
+                width: "56px",
+                height: "36px",
+                overflow: "hidden",
+                borderRadius: "4px",
+                flexShrink: 0,
               }}
             >
               <span
                 style={{
                   fontFamily: preset.text.fontFamily,
-                  fontSize: "14px",
+                  fontSize: "11px",
                   color: preset.text.color,
                   fontWeight: 600,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
+                  textAlign: "center",
                   textShadow: preset.text.strokeColor ? `0 0 2px ${preset.text.strokeColor}` : "none",
                 }}
               >
