@@ -51,7 +51,9 @@ export type IconName =
   | "user"
   | "hard-drive"
   | "shield"
-  | "eye";
+  | "eye"
+  | "transition"
+  | "keyframe";
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -423,6 +425,19 @@ export const Icon: React.FC<IconProps> = ({
       return (
         <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    case "transition":
+      return (
+        <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+          <path d="m4 16 8-8 8 8" />
+          <path d="m4 8 8 8 8-8" />
+        </svg>
+      );
+    case "keyframe":
+      return (
+        <svg style={iconStyle} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
+          <polygon points="12,2 22,12 12,22 2,12" />
         </svg>
       );
     default:

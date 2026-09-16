@@ -88,6 +88,8 @@ export function EffectsPanel() {
   const project = useAppStore((s) => s.project);
   const selectedClipId = useAppStore((s) => s.selectedClipId);
   const updateClip = useAppStore((s) => s.updateClip);
+  const activePanel = useAppStore((s) => s.activePanel);
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
 
   let selectedClip = null;
   let selectedTrack = null;
@@ -125,7 +127,10 @@ export function EffectsPanel() {
     );
 
   return (
-    <div className="media-bin-panel">
+    <div
+      className={`media-bin-panel ${activePanel === "leftDock" ? "panel--active" : ""}`}
+      onMouseDown={() => setActivePanel("leftDock")}
+    >
       <div className="panel-header">
         <span className="panel-title">Color Grading</span>
         {isModified && (

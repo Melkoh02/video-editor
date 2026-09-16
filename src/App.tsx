@@ -8,6 +8,8 @@ import { Timeline } from "./components/Timeline";
 import { MediaBin } from "./components/MediaBin";
 import { TextPanel } from "./components/TextPanel";
 import { EffectsPanel } from "./components/EffectsPanel";
+import { TransitionsPanel } from "./components/TransitionsPanel";
+import { KeyframesPanel } from "./components/KeyframesPanel";
 import { Inspector } from "./components/Inspector";
 import { PeakMeter } from "./components/PeakMeter";
 import { ResizableLayout } from "./components/ResizableLayout";
@@ -276,8 +278,12 @@ export default function App() {
             <MediaBin />
           ) : activeLeftTab === "text" ? (
             <TextPanel />
-          ) : (
+          ) : activeLeftTab === "effects" ? (
             <EffectsPanel />
+          ) : activeLeftTab === "transitions" ? (
+            <TransitionsPanel />
+          ) : (
+            <KeyframesPanel />
           )
         }
         centerDock={

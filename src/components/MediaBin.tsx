@@ -14,6 +14,8 @@ export function MediaBin() {
   const currentTime = useAppStore((s) => s.currentTime);
   const project = useAppStore((s) => s.project);
   const addTrack = useAppStore((s) => s.addTrack);
+  const activePanel = useAppStore((s) => s.activePanel);
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -70,7 +72,10 @@ export function MediaBin() {
   };
 
   return (
-    <div className="media-bin-panel">
+    <div
+      className={`media-bin-panel ${activePanel === "leftDock" ? "panel--active" : ""}`}
+      onMouseDown={() => setActivePanel("leftDock")}
+    >
       <div className="panel-header">
         <span className="panel-title">Media Library</span>
         <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
