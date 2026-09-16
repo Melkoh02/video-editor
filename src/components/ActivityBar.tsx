@@ -1,13 +1,18 @@
 import { useAppStore } from "../state/store";
 import { Icon } from "./ui/Icon";
 
-export function ActivityBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
+/**
+ * Left-side activity bar — controls left dock panel selection (WebStorm upper section)
+ * and the bottom dock (Timeline) toggle (WebStorm lower section).
+ *
+ * Inspector toggle lives in RightActivityBar.
+ * Keyboard Shortcuts are accessible via Help menu or the ? key only.
+ */
+export function ActivityBar() {
   const leftDockOpen = useAppStore((s) => s.leftDockOpen);
-  const rightDockOpen = useAppStore((s) => s.rightDockOpen);
   const timelineDockOpen = useAppStore((s) => s.timelineDockOpen);
   const activeLeftTab = useAppStore((s) => s.activeLeftTab);
   const toggleLeftDock = useAppStore((s) => s.toggleLeftDock);
-  const toggleRightDock = useAppStore((s) => s.toggleRightDock);
   const toggleTimelineDock = useAppStore((s) => s.toggleTimelineDock);
   const setActiveLeftTab = useAppStore((s) => s.setActiveLeftTab);
 
@@ -21,6 +26,7 @@ export function ActivityBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }
 
   return (
     <aside className="activity-bar">
+      {/* Upper section: open Left Dock panels */}
       <div className="activity-group">
         <button
           className={`activity-btn ${leftDockOpen && activeLeftTab === "media" ? "activity-btn--active" : ""}`}
@@ -47,29 +53,14 @@ export function ActivityBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }
         </button>
       </div>
 
+      {/* Lower section: toggle bottom dock (Timeline) */}
       <div className="activity-group activity-group-bottom">
         <button
-          className={`activity-btn ${rightDockOpen ? "activity-btn--active" : ""}`}
-          title="Toggle Properties Inspector"
-          onClick={toggleRightDock}
-        >
-          <Icon name="inspector" size={18} />
-        </button>
-
-        <button
           className={`activity-btn ${timelineDockOpen ? "activity-btn--active" : ""}`}
-          title="Toggle Multi-track Timeline"
+          title="Toggle Timeline"
           onClick={toggleTimelineDock}
         >
           <Icon name="timeline" size={18} />
-        </button>
-
-        <button
-          className="activity-btn"
-          title="Keyboard Shortcuts Reference"
-          onClick={onOpenShortcuts}
-        >
-          <Icon name="keyboard" size={18} />
         </button>
       </div>
     </aside>

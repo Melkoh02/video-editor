@@ -346,6 +346,18 @@ html, body, #root {
 
 .act-icon { font-size: 16px; }
 
+/* Right activity bar: mirror of left bar, border on left side */
+.activity-bar--right {
+  border-right: none;
+  border-left: 1px solid #28292e;
+}
+
+/* Active indicator points right for the right bar */
+.activity-bar--right .activity-btn--active {
+  border-left: none;
+  border-right: 2px solid #6366f1;
+}
+
 /* ── Toolbar & Buttons ────────────────────────────────────────────── */
 .toolbar {
   display: flex;

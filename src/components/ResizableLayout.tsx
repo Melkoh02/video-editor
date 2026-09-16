@@ -6,6 +6,7 @@ type ResizableLayoutProps = {
   leftDock: ReactNode;
   centerDock: ReactNode;
   rightDock: ReactNode;
+  rightActivityBar: ReactNode;
   timelineDock: ReactNode;
 };
 
@@ -14,6 +15,7 @@ export function ResizableLayout({
   leftDock,
   centerDock,
   rightDock,
+  rightActivityBar,
   timelineDock,
 }: ResizableLayoutProps) {
   const [leftWidth, setLeftWidth] = useState(260);
@@ -104,6 +106,9 @@ export function ResizableLayout({
             </aside>
           </>
         )}
+
+        {/* Right Activity Bar */}
+        {rightActivityBar}
       </main>
 
       {/* Timeline Dock */}

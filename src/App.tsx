@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { Topbar } from "./components/Topbar";
 import { ActivityBar } from "./components/ActivityBar";
+import { RightActivityBar } from "./components/RightActivityBar";
 import { PreviewCanvas } from "./components/PreviewCanvas";
 import { Timeline } from "./components/Timeline";
 import { MediaBin } from "./components/MediaBin";
@@ -228,7 +229,7 @@ export default function App() {
       />
 
       <ResizableLayout
-        activityBar={<ActivityBar onOpenShortcuts={() => setShowShortcuts(true)} />}
+        activityBar={<ActivityBar />}
         leftDock={
           activeLeftTab === "media" ? (
             <MediaBin />
@@ -249,6 +250,7 @@ export default function App() {
             <PeakMeter />
           </>
         }
+        rightActivityBar={<RightActivityBar />}
         timelineDock={<Timeline />}
       />
 
