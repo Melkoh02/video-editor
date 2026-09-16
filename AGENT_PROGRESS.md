@@ -73,6 +73,7 @@ src/
 ---
 
 ## 📋 Completed Features & Roadmap Status
+- [x] **Canvas Zoom & Pan Controls**: Viewport scale presets (Fit, 25%, 50%, 75%, 100%, 150%, 200%, 400%), middle-click/Space pan navigation, floating toolbar, and studio backdrop canvas framing.
 - [x] **Timeline Playback Loop & In/Out Work Area Range**: Header loop toggle icon (`L`), In/Out range markers (`[` / `]`), work area highlight on ruler, and bounded looping playback.
 - [x] **Media Drag and Drop to Timeline**: Drag clips from Media Library directly onto compatible timeline tracks.
 - [x] **Multi-File Importing**: Import multiple audio, video, and image files in a single file picker selection.
@@ -90,7 +91,7 @@ src/
 1. [x] **Media Drag and Drop to Timeline** (MediaBin → Timeline track lanes).
 2. [x] **Multi-File Importing** (Multi-select in file dialog, auto-bin and track placement).
 3. [x] **Timeline Playback Loop & In/Out Work Area Range** (Loop toggle in header, In/Out range markers on ruler, looping playback).
-4. [ ] **Canvas Zoom & Pan Controls** (Zoom in/out, fit, pan/view outside canvas boundary).
+4. [x] **Canvas Zoom & Pan Controls** (Zoom in/out, fit, pan/view outside canvas boundary).
 5. [ ] **Dedicated Transitions Panel / Tab** (Independent panel with transition gallery and controls).
 6. [ ] **Panel Selection & Contextual Shortcuts** (Focus border on active panel, region-specific hotkeys).
 7. [ ] **Dedicated Keyframes Tab (After Effects Philosophy)** (Stopwatches, property tracks, keyframe list, easy ease).
