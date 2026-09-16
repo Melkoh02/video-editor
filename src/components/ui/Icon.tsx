@@ -9,6 +9,7 @@ export type IconName =
   | "play"
   | "pause"
   | "stop"
+  | "loop"
   | "export"
   | "magnet"
   | "undo"
@@ -49,7 +50,8 @@ export type IconName =
   | "clock"
   | "user"
   | "hard-drive"
-  | "shield";
+  | "shield"
+  | "eye";
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -90,6 +92,22 @@ export const Icon: React.FC<IconProps> = ({
       return (
         <svg style={iconStyle} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>
           <path d="M6 6h12v12H6z" />
+        </svg>
+      );
+    case "loop":
+      return (
+        <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+          <path d="m17 2 4 4-4 4" />
+          <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+          <path d="m7 22-4-4 4-4" />
+          <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+        </svg>
+      );
+    case "eye":
+      return (
+        <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       );
     case "export":

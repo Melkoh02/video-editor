@@ -15,6 +15,14 @@ class PlaybackController {
   play() {
     audioEngine.resume();
     const store = useAppStore.getState();
+    const totalDuration = this.projectDuration(store);
+    const startBound = store.inPoint !== null ? Math.max(0, store.inPoint) : 0;
+    const endBound = store.outPoint !== null ? Math.min(totalDuration, store.outPoint) : totalDuration;
+
+    if (store.currentTime >= endBound) {
+      store.setCurrentTime(startBound);
+    }
+
     store.play();
     this.lastTimestamp = null;
     this.tick();
@@ -28,7 +36,10 @@ class PlaybackController {
 
   stop() {
     this.stopLoop();
-    useAppStore.getState().stop();
+    const store = useAppStore.getState();
+    const startBound = store.inPoint !== null ? Math.max(0, store.inPoint) : 0;
+    store.stop();
+    store.setCurrentTime(startBound);
     this.syncMediaElements(false);
   }
 
@@ -46,15 +57,23 @@ class PlaybackController {
         const delta = (ts - this.lastTimestamp) / 1000;
         const next = store.currentTime + delta;
 
-        // Compute total duration from clips
-        const duration = this.projectDuration(store);
-        if (next >= duration) {
-          store.setCurrentTime(duration);
-          store.pause();
-          this.syncMediaElements(false);
-          return;
+        // Compute total duration and work area bounds
+        const totalDuration = this.projectDuration(store);
+        const startBound = store.inPoint !== null ? Math.max(0, store.inPoint) : 0;
+        const endBound = store.outPoint !== null ? Math.min(totalDuration, store.outPoint) : totalDuration;
+
+        if (next >= endBound) {
+          if (store.isLooping) {
+            store.setCurrentTime(startBound);
+          } else {
+            store.setCurrentTime(endBound);
+            store.pause();
+            this.syncMediaElements(false);
+            return;
+          }
+        } else {
+          store.setCurrentTime(next);
         }
-        store.setCurrentTime(next);
       }
       this.lastTimestamp = ts;
       this.syncMediaElements(true);

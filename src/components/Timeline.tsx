@@ -97,6 +97,10 @@ function Ruler({
   const projectMarkers = useAppStore((s) => s.project.markers);
   const markers = projectMarkers || EMPTY_MARKERS;
   const removeMarker = useAppStore((s) => s.removeMarker);
+  const inPoint = useAppStore((s) => s.inPoint);
+  const outPoint = useAppStore((s) => s.outPoint);
+  const setInPoint = useAppStore((s) => s.setInPoint);
+  const setOutPoint = useAppStore((s) => s.setOutPoint);
 
   const ticks: React.ReactNode[] = [];
   
@@ -121,13 +125,60 @@ function Ruler({
     onSeek(Math.max(0, x / pxPerSec));
   }
 
+  const workStart = inPoint !== null ? inPoint : 0;
+  const workEnd = outPoint !== null ? outPoint : duration;
+  const hasWorkArea = inPoint !== null || outPoint !== null;
+
   return (
     <div
       className="tl-ruler"
       style={{ width: (duration + 5) * pxPerSec, height: RULER_HEIGHT }}
       onClick={handleClick}
     >
+      {/* Work Area highlight bar */}
+      {hasWorkArea && (
+        <div
+          className="ruler-workarea-bar"
+          style={{
+            left: workStart * pxPerSec,
+            width: Math.max(2, (workEnd - workStart) * pxPerSec),
+          }}
+          title={`Work Area: ${workStart.toFixed(1)}s - ${workEnd.toFixed(1)}s`}
+        />
+      )}
+
       {ticks}
+
+      {/* In-point indicator */}
+      {inPoint !== null && (
+        <div
+          className="ruler-inout-handle ruler-in-handle"
+          style={{ left: inPoint * pxPerSec }}
+          title={`In Point: ${inPoint.toFixed(2)}s (Double click to clear)`}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setInPoint(null);
+          }}
+        >
+          <span className="inout-label">[{formatTime(inPoint)}</span>
+        </div>
+      )}
+
+      {/* Out-point indicator */}
+      {outPoint !== null && (
+        <div
+          className="ruler-inout-handle ruler-out-handle"
+          style={{ left: outPoint * pxPerSec }}
+          title={`Out Point: ${outPoint.toFixed(2)}s (Double click to clear)`}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setOutPoint(null);
+          }}
+        >
+          <span className="inout-label">{formatTime(outPoint)}]</span>
+        </div>
+      )}
+
       {markers.map((m) => (
         <div
           key={m.id}
@@ -650,6 +701,15 @@ export function Timeline() {
   const separateAudioFromVideo = useAppStore((s) => s.separateAudioFromVideo);
   const snappingEnabled = useAppStore((s) => s.snappingEnabled);
   const toggleSnapping = useAppStore((s) => s.toggleSnapping);
+  const isLooping = useAppStore((s) => s.isLooping);
+  const toggleLooping = useAppStore((s) => s.toggleLooping);
+  const inPoint = useAppStore((s) => s.inPoint);
+  const outPoint = useAppStore((s) => s.outPoint);
+  const setInPoint = useAppStore((s) => s.setInPoint);
+  const setOutPoint = useAppStore((s) => s.setOutPoint);
+  const clearWorkArea = useAppStore((s) => s.clearWorkArea);
+  const activePanel = useAppStore((s) => s.activePanel);
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
 
@@ -749,7 +809,10 @@ export function Timeline() {
   ];
 
   return (
-    <div className="tl-root">
+    <div
+      className={`tl-root ${activePanel === "timeline" ? "panel--active" : ""}`}
+      onMouseDown={() => setActivePanel("timeline")}
+    >
       <div className="tl-bar">
         {/* Transport Controls */}
         <div className="tl-bar-group">
@@ -772,6 +835,40 @@ export function Timeline() {
           <button className="tb-btn" onClick={() => playbackController.stop()} title="Stop">
             <Icon name="stop" size={12} />
           </button>
+          <button
+            className={`tb-btn ${isLooping ? "tb-btn--active" : ""}`}
+            onClick={toggleLooping}
+            title={`Loop Playback ${isLooping ? "ON" : "OFF"} (L)`}
+          >
+            <Icon name="loop" size={14} />
+          </button>
+        </div>
+
+        {/* Work Area In / Out Points */}
+        <div className="tl-bar-group">
+          <button
+            className={`tb-btn ${inPoint !== null ? "tb-btn--active-tag" : ""}`}
+            onClick={() => setInPoint(currentTime)}
+            title="Set In Point at Playhead (I)"
+          >
+            <span style={{ fontSize: "11px", fontWeight: 700 }}>[ I</span>
+          </button>
+          <button
+            className={`tb-btn ${outPoint !== null ? "tb-btn--active-tag" : ""}`}
+            onClick={() => setOutPoint(currentTime)}
+            title="Set Out Point at Playhead (O)"
+          >
+            <span style={{ fontSize: "11px", fontWeight: 700 }}>O ]</span>
+          </button>
+          {(inPoint !== null || outPoint !== null) && (
+            <button
+              className="tb-btn"
+              onClick={clearWorkArea}
+              title="Clear In/Out Work Area (Alt+X)"
+            >
+              <Icon name="close" size={10} />
+            </button>
+          )}
         </div>
 
         <div className="tl-bar-group">
