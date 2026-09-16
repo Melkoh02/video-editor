@@ -71,8 +71,11 @@ export class Compositor {
 
     // Filter video tracks & render in track order (bottom to top)
     const videoTracks = project.tracks.filter((t) => t.type === "video");
+    const hasSoloed = videoTracks.some((t) => t.soloed);
+
     for (const track of videoTracks) {
       if (track.muted) continue;
+      if (hasSoloed && !track.soloed) continue;
       this.renderTrack(track, currentTime, width, height);
     }
   }

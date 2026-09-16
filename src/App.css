@@ -919,8 +919,10 @@ html, body, #root {
 }
 .track-btn:hover { background: #34353a; color: #fff; }
 .track-btn--active-mute { background: #ef4444 !important; color: #fff !important; border-color: #ef4444; }
+.track-btn--active-solo { background: #3b82f6 !important; color: #fff !important; border-color: #3b82f6; font-weight: 700; }
 .track-btn--active-lock { background: #f59e0b !important; color: #fff !important; border-color: #f59e0b; }
 .track-btn--delete:hover { background: #dc2626 !important; color: #fff !important; }
+.tl-lane--soloed { border-left: 2px solid #3b82f6; }
 
 /* Lanes */
 .tl-lanes {

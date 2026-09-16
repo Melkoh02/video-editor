@@ -394,6 +394,24 @@ function ClipBlock({
         onMouseDown={(e) => onMouseDown(e, "trim-right")}
       />
 
+      {/* Volume level line */}
+      {(clip.mediaType === "audio" || clip.mediaType === "video") && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: `${Math.min(100, Math.max(0, ((clip.volume ?? 1) / 2) * 100))}%`,
+            left: 0,
+            right: 0,
+            height: "1px",
+            background: "rgba(34, 197, 94, 0.8)",
+            boxShadow: "0 0 2px rgba(34, 197, 94, 0.5)",
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+          title={`Volume: ${Math.round((clip.volume ?? 1) * 100)}%`}
+        />
+      )}
+
       {/* Fade-out indicator */}
       {fadeOutPx > 0 && (
         <div
@@ -426,12 +444,13 @@ function TrackLane({
   onContextMenu: (x: number, y: number, clipId: string) => void;
 }) {
   const setTrackMuted = useAppStore((s) => s.setTrackMuted);
+  const setTrackSoloed = useAppStore((s) => s.setTrackSoloed);
   const setTrackLocked = useAppStore((s) => s.setTrackLocked);
   const removeTrack = useAppStore((s) => s.removeTrack);
   const moveTrack = useAppStore((s) => s.moveTrack);
 
   return (
-    <div className={`tl-lane ${track.muted ? "tl-lane--muted" : ""}`} style={{ height: TRACK_HEIGHT }}>
+    <div className={`tl-lane ${track.muted ? "tl-lane--muted" : ""} ${track.soloed ? "tl-lane--soloed" : ""}`} style={{ height: TRACK_HEIGHT }}>
       <div className="tl-lane-header">
         <div className="tl-reorder-btns">
           <button
@@ -464,6 +483,13 @@ function TrackLane({
             onClick={() => setTrackMuted(track.id, !track.muted)}
           >
             {track.muted ? <Icon name="volume-mute" size={10} /> : "M"}
+          </button>
+          <button
+            className={`track-btn ${track.soloed ? "track-btn--active-solo" : ""}`}
+            title={track.soloed ? "Unsolo track" : "Solo track"}
+            onClick={() => setTrackSoloed(track.id, !track.soloed)}
+          >
+            S
           </button>
           <button
             className={`track-btn ${track.locked ? "track-btn--active-lock" : ""}`}

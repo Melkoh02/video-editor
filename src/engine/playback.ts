@@ -90,7 +90,11 @@ class PlaybackController {
     const activeSources = new Set<HTMLMediaElement>();
     let totalVolumePeak = 0;
 
+    const hasSoloedTracks = store.project.tracks.some((t) => t.soloed);
+
     for (const track of store.project.tracks) {
+      const isTrackMuted = track.muted || (hasSoloedTracks && !track.soloed);
+
       for (const clip of track.clips) {
         const entry = sourceRegistry.get(clip.sourceId);
         if (!entry || entry.type === "image") continue;
@@ -116,7 +120,7 @@ class PlaybackController {
 
           const baseVol = clip.volume !== undefined ? clip.volume : 1;
           const clipVol = baseVol * Math.max(0, Math.min(1, fadeMultiplier));
-          const finalVol = track.muted ? 0 : Math.min(1, Math.max(0, clipVol));
+          const finalVol = isTrackMuted ? 0 : Math.min(1, Math.max(0, clipVol));
           mediaEl.volume = finalVol;
           mediaEl.muted = track.muted || finalVol === 0;
 

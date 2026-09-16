@@ -81,6 +81,7 @@ src/
 - [x] **Media Bin Live Video & Image Thumbnails**: Automatic HTML canvas frame capture at 0.5s for video imports and image preview thumbnails in Media Library cards.
 - [x] **Project Persistence & Auto-Save**: Real-time Zustand store state synchronization to `localStorage` with initial state restoration and Topbar "New / Reset Project" option.
 - [x] **Ripple Delete & Gap Removal**: `Shift + Delete` shortcut and right-click context menu option to delete clips and collapse gaps on timeline tracks automatically.
+- [x] **Track Soloing (`S`) & Clip Volume Gain Indicator**: **`S`** Track Solo toggle button in timeline headers (silences all non-soloed tracks) plus horizontal green volume level gain lines on timeline clip blocks.
 
 ### 🎯 Sequential Execution Plan
 1. [x] **Dedicated Left Dock Tabs** (`TextPanel` and `EffectsPanel`).
@@ -88,7 +89,7 @@ src/
 3. [x] **Media Bin Live Canvas Video Thumbnails**.
 4. [x] **Project Persistence & Auto-Save** (`localStorage` state sync).
 5. [x] **Ripple Delete & Gap Removal**.
-6. [ ] **Interactive Volume Gain Line & Track Solo (`S`)**.
+6. [x] **Interactive Volume Gain Line & Track Solo (`S`)**.
 
 ---
 *Updated automatically for seamless agent handoff.*

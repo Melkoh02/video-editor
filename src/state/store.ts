@@ -61,6 +61,7 @@ type AppState = {
   reorderTracks: (tracks: Track[]) => void;
   moveTrack: (fromIndex: number, toIndex: number) => void;
   setTrackMuted: (trackId: string, muted: boolean) => void;
+  setTrackSoloed: (trackId: string, soloed: boolean) => void;
   setTrackLocked: (trackId: string, locked: boolean) => void;
 
   // Clips
@@ -281,6 +282,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       project: {
         ...s.project,
         tracks: s.project.tracks.map((t) => (t.id === trackId ? { ...t, muted } : t)),
+      },
+    })),
+
+  setTrackSoloed: (trackId, soloed) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        tracks: s.project.tracks.map((t) => (t.id === trackId ? { ...t, soloed } : t)),
       },
     })),
 

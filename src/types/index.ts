@@ -79,6 +79,7 @@ export type Track = {
   type: "video" | "audio";
   name: string;       // e.g. "V1", "A1"
   muted: boolean;
+  soloed?: boolean;
   locked: boolean;
   clips: Clip[];
 };
