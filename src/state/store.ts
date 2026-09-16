@@ -19,9 +19,21 @@ type AppState = {
   leftDockOpen: boolean;
   rightDockOpen: boolean;
   timelineDockOpen: boolean;
-  activeLeftTab: "media" | "text" | "effects";
+  activeLeftTab: "media" | "text" | "effects" | "transitions" | "keyframes";
+  activePanel: "timeline" | "preview" | "leftDock" | "rightDock" | "inspector" | null;
+  setActivePanel: (panel: "timeline" | "preview" | "leftDock" | "rightDock" | "inspector" | null) => void;
   autoSelectCanvas: boolean;
   transformControlsCanvas: boolean;
+
+  // Timeline playback loop & Work Area (In / Out points)
+  isLooping: boolean;
+  inPoint: number | null;
+  outPoint: number | null;
+  toggleLooping: () => void;
+  setIsLooping: (val: boolean) => void;
+  setInPoint: (time: number | null) => void;
+  setOutPoint: (time: number | null) => void;
+  clearWorkArea: () => void;
 
   // Timeline snapping
   snappingEnabled: boolean;
@@ -36,7 +48,7 @@ type AppState = {
   toggleLeftDock: () => void;
   toggleRightDock: () => void;
   toggleTimelineDock: () => void;
-  setActiveLeftTab: (tab: "media" | "text" | "effects") => void;
+  setActiveLeftTab: (tab: "media" | "text" | "effects" | "transitions" | "keyframes") => void;
   setAutoSelectCanvas: (val: boolean) => void;
   setTransformControlsCanvas: (val: boolean) => void;
 
@@ -155,8 +167,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   rightDockOpen: true,
   timelineDockOpen: true,
   activeLeftTab: "media",
+  activePanel: "timeline",
+  setActivePanel: (panel) => set({ activePanel: panel }),
   autoSelectCanvas: true,
   transformControlsCanvas: true,
+
+  // Timeline playback loop & Work Area
+  isLooping: false,
+  inPoint: null,
+  outPoint: null,
+  toggleLooping: () => set((s) => ({ isLooping: !s.isLooping })),
+  setIsLooping: (val) => set({ isLooping: val }),
+  setInPoint: (time) => set({ inPoint: time }),
+  setOutPoint: (time) => set({ outPoint: time }),
+  clearWorkArea: () => set({ inPoint: null, outPoint: null }),
 
   // Timeline snapping
   snappingEnabled: true,
