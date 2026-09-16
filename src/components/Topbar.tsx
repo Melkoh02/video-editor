@@ -170,7 +170,7 @@ export function Topbar({
                             if (parsed && parsed.tracks) {
                               useAppStore.getState().loadProject(parsed);
                             }
-                          } catch (err) {
+                          } catch {
                             alert("Invalid project file");
                           }
                         };
