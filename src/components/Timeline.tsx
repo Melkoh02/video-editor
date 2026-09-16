@@ -448,9 +448,62 @@ function TrackLane({
   const setTrackLocked = useAppStore((s) => s.setTrackLocked);
   const removeTrack = useAppStore((s) => s.removeTrack);
   const moveTrack = useAppStore((s) => s.moveTrack);
+  const addClip = useAppStore((s) => s.addClip);
+
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (track.locked) return;
+    e.dataTransfer.dropEffect = "copy";
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (track.locked) return;
+
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+
+    try {
+      const data = JSON.parse(raw);
+      if (!data.sourceId) return;
+
+      const targetType = track.type;
+      const clipType = data.type === "audio" ? "audio" : "video";
+      if (targetType !== clipType) return;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const dropTime = Math.max(0, x / pxPerSec);
+
+      addClip(track.id, {
+        sourceId: data.sourceId,
+        name: data.name,
+        mediaType: data.type || "video",
+        inPoint: 0,
+        outPoint: data.duration || 5,
+        timelineStart: dropTime,
+        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
+        opacity: 1,
+        volume: 1,
+      });
+    } catch (err) {
+      console.error("Drop failed:", err);
+    }
+  };
 
   return (
-    <div className={`tl-lane ${track.muted ? "tl-lane--muted" : ""} ${track.soloed ? "tl-lane--soloed" : ""}`} style={{ height: TRACK_HEIGHT }}>
+    <div
+      className={`tl-lane ${track.muted ? "tl-lane--muted" : ""} ${track.soloed ? "tl-lane--soloed" : ""} ${isDragOver ? "tl-lane--dragover" : ""}`}
+      style={{ height: TRACK_HEIGHT }}
+    >
       <div className="tl-lane-header">
         <div className="tl-reorder-btns">
           <button
@@ -508,7 +561,12 @@ function TrackLane({
         </div>
       </div>
 
-      <div className="tl-lane-clips">
+      <div
+        className="tl-lane-clips"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {track.clips.map((clip) => (
           <ClipBlock
             key={clip.id}

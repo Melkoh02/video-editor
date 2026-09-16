@@ -105,7 +105,24 @@ export function MediaBin() {
         )}
 
         {mediaBin.map((item) => (
-          <div key={item.id} className="media-bin-card">
+          <div
+            key={item.id}
+            className="media-bin-card"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(
+                "application/json",
+                JSON.stringify({
+                  sourceId: item.sourceId,
+                  name: item.name,
+                  type: item.type,
+                  duration: item.duration,
+                  format: item.format,
+                })
+              );
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+          >
             <div className="media-card-preview" style={{ position: "relative", overflow: "hidden" }}>
               {item.thumbnailUrl ? (
                 <img

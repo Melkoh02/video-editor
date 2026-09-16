@@ -1111,8 +1111,13 @@ html, body, #root {
   display: flex;
   border-bottom: 1px solid #222327;
   position: relative;
+  transition: background-color 0.15s ease;
 }
 .tl-lane--muted { opacity: 0.5; }
+.tl-lane--dragover {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  outline: 1px dashed #6366f1;
+}
 
 .tl-lane-clips {
   flex: 1;
